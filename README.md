@@ -8,6 +8,28 @@ anti-censorship project — uses a slice of your internet to help people in
 censored countries get online. The official version helps anyone in any
 censored country. This version is narrower: only Iran.
 
+## The entire change
+
+This is the whole modification, in [`ir-only.patch`](ir-only.patch). Four
+lines of logic added to Psiphon's source code:
+
+```go
+clientRegion := announceResponse.ClientRegion
+
+if clientRegion != "IR" {
+    return false, errors.TraceNew("client region not allowed")
+}
+```
+
+It checks the country of each user the Psiphon broker wants to send to
+your computer. If they aren't in Iran, your computer politely declines
+and waits for the next one.
+
+The downloadable binaries on the [Releases page](https://github.com/adpunt/conduit-ir-patch/releases)
+are built automatically by GitHub: it clones Psiphon's official source,
+applies that 8-line patch, compiles, and uploads. You can watch this
+happen in the [Actions tab](https://github.com/adpunt/conduit-ir-patch/actions).
+
 > ⚠️ **Unofficial.** Not made by, endorsed by, or supported by Psiphon Inc.
 > If something goes wrong, don't email them about it. See [`NOTICE.md`](NOTICE.md).
 
@@ -47,72 +69,104 @@ computer with a reliable internet connection that's on most of the day.
 
 ## Three steps
 
-### 1. Download the patched Conduit
+### Before you start: make a folder
 
-Go to the [**latest release**](https://github.com/adpunt/conduit-ir-patch/releases/latest)
-and download the file that matches your computer:
+Create one folder where everything will live. This makes the rest easy
+because you won't need to type long paths.
 
-| Your computer | File to download |
-|---|---|
-| Mac with Apple Silicon (M1/M2/M3/M4) | `conduit-ir-darwin-arm64` |
-| Mac with Intel chip | `conduit-ir-darwin-amd64` |
-| Windows | `conduit-ir-windows-amd64.exe` |
-| Linux, normal PC | `conduit-ir-linux-amd64` |
-| Raspberry Pi or other ARM Linux | `conduit-ir-linux-arm64` |
+- **Mac:** Open Finder → click on your home folder → `File → New Folder` →
+  name it `conduit-ir`.
+- **Windows:** Open File Explorer → go to your home folder (e.g.
+  `C:\Users\YourName`) → right-click → New Folder → name it `conduit-ir`.
+- **Linux:** `mkdir ~/conduit-ir`.
 
-Also download `extract-config.py` from the same release — you'll need it
-in step 2.
+You'll put three files in this folder before the end.
+
+### 1. Download the patched Conduit + the config tool
+
+Open the [**latest release**](https://github.com/adpunt/conduit-ir-patch/releases/latest)
+in your browser. You need **two files**, both matching your computer:
+
+| Your computer | Conduit binary | Config tool |
+|---|---|---|
+| Mac with Apple Silicon (M1/M2/M3/M4) | `conduit-ir-darwin-arm64` | `extract-config-darwin-arm64` |
+| Mac with Intel chip | `conduit-ir-darwin-amd64` | `extract-config-darwin-amd64` |
+| Windows | `conduit-ir-windows-amd64.exe` | `extract-config-windows-amd64.exe` |
+| Linux, normal PC | `conduit-ir-linux-amd64` | `extract-config-linux-amd64` |
+| Raspberry Pi or other ARM Linux | `conduit-ir-linux-arm64` | `extract-config-linux-arm64` |
+
+Click each filename in the Releases page to download. Both files **must
+go into your `conduit-ir` folder** from the previous step.
 
 > **Don't know which Mac you have?** Click the Apple menu → *About This Mac*.
-> If it says "Apple M…" you have Apple Silicon. If it says "Intel" you have
-> Intel.
-
-After downloading, put both files in a folder you'll remember — `Downloads`
-is fine, or make a new folder called `conduit`.
+> "Apple M…" = Apple Silicon. "Intel" = Intel.
+>
+> **What's inside the binary?** Psiphon's official Conduit source, plus
+> the 4-line patch shown at the top of this README. GitHub's CI builds it
+> automatically from public source — see [Actions](https://github.com/adpunt/conduit-ir-patch/actions).
 
 ### 2. Get a Psiphon config file
 
-The patched Conduit needs a **network config** to know how to talk to
-Psiphon's servers. This file belongs to Psiphon and isn't included in this
-download. Here's how to get one:
+The patched Conduit needs a **network config** to talk to Psiphon's
+servers. This file belongs to Psiphon, so we don't ship it in our
+download — but every official Conduit release already has it baked in.
+The config tool you downloaded copies it out for you.
 
-1. **Download the official Conduit** from
-   [Psiphon's releases page](https://github.com/Psiphon-Inc/conduit/releases/latest).
-   Pick the file for your OS.
-2. **Run the extraction script** to copy the config out of the official
-   binary. Open a terminal, navigate to your folder, and run:
+**Step 2a — Download the official Conduit.** Go to
+[Psiphon's releases page](https://github.com/Psiphon-Inc/conduit/releases/latest)
+and download whichever file matches your OS. Save it to your
+`conduit-ir` folder. Now you have three files in there.
 
-   - **Mac/Linux:**
-     ```bash
-     python3 extract-config.py /path/to/official-conduit-binary > psiphon_config.json
-     ```
+**Step 2b — Open a terminal in your folder.**
 
-   - **Windows (Command Prompt or PowerShell):**
-     ```cmd
-     python extract-config.py C:\path\to\official-conduit-binary.exe > psiphon_config.json
-     ```
+- **Mac:** Open Finder, right-click your `conduit-ir` folder, choose
+  *"New Terminal at Folder"*. (If you don't see that option: open Terminal
+  from Applications → Utilities, then type `cd ~/conduit-ir` and press
+  Enter.)
+- **Windows:** Open your `conduit-ir` folder in File Explorer, click in
+  the address bar at the top, type `cmd` and press Enter. A Command Prompt
+  opens already inside the folder.
+- **Linux:** `cd ~/conduit-ir` in any terminal.
 
-   Python 3 ships with macOS and most Linux distros. On Windows, install it
-   from [python.org/downloads](https://www.python.org/downloads/) (tick "Add
-   Python to PATH" during install).
+**Step 2c — Run the config tool.** This is one command. The trick: type
+the start, then **drag the official Conduit file from your folder into
+the terminal window** — your computer will paste the filename for you.
 
-You should now have `psiphon_config.json` in your folder. It's about 10 KB.
+- **Mac/Linux:** First, make the tool runnable (one-time, paste exactly):
 
-> **Why is this needed?** The official Conduit has the config baked inside
-> it. We can't legally redistribute it in our patched build, so the
-> extraction script copies it out of *your* download of the official
-> version.
+  ```bash
+  chmod +x extract-config-* conduit-ir-*
+  ```
+
+  Then type `./extract-config-` followed by your platform name (e.g.
+  `darwin-arm64`), then a space, then **drag the official Conduit file
+  into the terminal**. You'll end up with something like:
+
+  ```bash
+  ./extract-config-darwin-arm64 conduit-mac-1.8.0-RC.2.dmg
+  ```
+
+  Press Enter. You'll see: `✓ Wrote psiphon_config.json (10142 bytes) in the current folder.`
+
+- **Windows:** Same idea — type `extract-config-windows-amd64.exe`, then
+  a space, then drag the official Conduit `.exe` into the window. Final
+  command looks like:
+
+  ```cmd
+  extract-config-windows-amd64.exe conduit-windows-amd64.exe
+  ```
+
+You now have a fourth file in your folder: `psiphon_config.json` (~10 KB).
 
 ### 3. Run it
 
-In a terminal, in the same folder:
+Still in your terminal, in the same folder:
 
 - **Mac/Linux:**
   ```bash
-  chmod +x conduit-ir-*
   ./conduit-ir-darwin-arm64 start -c psiphon_config.json -m 10 -b 20
   ```
-  (Replace `darwin-arm64` with whichever file you downloaded.)
+  (Replace `darwin-arm64` with whatever you actually downloaded.)
 
 - **Windows:**
   ```cmd
@@ -126,12 +180,12 @@ What the flags mean:
 
 To stop the program, press **`Ctrl+C`** in the terminal.
 
-> **Mac says "cannot be opened, developer cannot be verified"?** This is
-> expected for any program not bought from the App Store. Open Finder,
-> right-click the binary, choose **Open**, then click **Open** in the
-> warning dialog. You only need to do this once.
+> **Mac says "cannot be opened, developer cannot be verified"?** Expected
+> for any program not sold through the App Store. Open Finder, right-click
+> the binary, choose **Open**, then click **Open** in the warning. Only
+> needed once.
 >
-> **Windows shows a blue SmartScreen warning?** Click "More info", then
+> **Windows shows a blue SmartScreen warning?** Click "More info" →
 > "Run anyway". Same idea.
 
 ---
@@ -152,33 +206,16 @@ that's fine. Iran demand fluctuates. Leave it running.
 
 ---
 
-## How to verify this isn't sketchy
+## What's in this repo
 
-The repository contains five small files. You can read every line:
+Everything is small and readable. Click any file to see its contents:
 
 | File | Purpose |
 |---|---|
-| [`ir-only.patch`](ir-only.patch) | The 8-line change to Psiphon's code |
-| [`extract-config.py`](extract-config.py) | The Python script that copies the config out of your official Conduit binary |
+| [`ir-only.patch`](ir-only.patch) | The actual change (shown at top of this README) |
+| [`extract-config/`](extract-config/) | Source code of the config-extraction tool |
 | [`install.sh`](install.sh) | Used by CI to test the build (you don't run it) |
-| [`README.md`](README.md) | This file |
 | [`NOTICE.md`](NOTICE.md), [`LICENSE`](LICENSE) | Attribution + GPL-3.0 |
-
-**The patch itself, in full:**
-
-```go
-clientRegion := announceResponse.ClientRegion
-
-if clientRegion != "IR" {
-    return false, errors.TraceNew("client region not allowed")
-}
-```
-
-That's it. The binaries on the Releases page are built automatically by
-GitHub from the source code in this repository plus Psiphon's official
-source — see the [Actions tab](https://github.com/adpunt/conduit-ir-patch/actions).
-If the most recent run shows a red ✗ instead of a green ✓, don't download
-until it's fixed.
 
 ---
 

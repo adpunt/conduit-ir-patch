@@ -25,16 +25,33 @@ jobs:
       - name: Run install.sh to fetch and patch sources
         run: bash ./install.sh
 
-      - name: Build for all platforms
+      - name: Build patched Conduit for all platforms
         run: |
           cd ~/repos/conduit/cli
           make build-all
 
-      - name: Stage release artifacts
+      - name: Build extract-config for all platforms
         run: |
-          mkdir -p release
+          cd "$GITHUB_WORKSPACE/extract-config"
+          mkdir -p "$GITHUB_WORKSPACE/release"
+          for plat in \
+              "darwin amd64" \
+              "darwin arm64" \
+              "linux amd64" \
+              "linux arm64" \
+              "windows amd64"; do
+            set -- $plat
+            os=$1; arch=$2
+            ext=""
+            [ "$os" = "windows" ] && ext=".exe"
+            out="$GITHUB_WORKSPACE/release/extract-config-${os}-${arch}${ext}"
+            echo "Building $out"
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -ldflags="-s -w" -o "$out" .
+          done
+
+      - name: Stage Conduit binaries
+        run: |
           cd ~/repos/conduit/cli/dist
-          # Rename to make it obvious this is the IR-only fork.
           for f in conduit-linux-amd64 conduit-linux-arm64 \
                    conduit-darwin-amd64 conduit-darwin-arm64 \
                    conduit-windows-amd64.exe; do
@@ -42,8 +59,6 @@ jobs:
               cp "$f" "$GITHUB_WORKSPACE/release/conduit-ir-${f#conduit-}"
             fi
           done
-          # Also bundle extract-config.py for convenience
-          cp "$GITHUB_WORKSPACE/extract-config.py" "$GITHUB_WORKSPACE/release/"
           ls -la "$GITHUB_WORKSPACE/release/"
 
       - name: Create GitHub Release
@@ -70,4 +85,4 @@ jobs:
             | Linux (most) | `conduit-ir-linux-amd64` |
             | Linux on ARM (Raspberry Pi etc.) | `conduit-ir-linux-arm64` |
 
-            You also need `extract-config.py` (bundled above) to get a Psiphon config.
+            You also need the matching `extract-config-*` (bundled above) to get a Psiphon config.
