@@ -1,0 +1,73 @@
+name: Build and publish binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write  # required to upload release assets
+
+jobs:
+  build:
+    name: Build patched Conduit binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.24
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+
+      - name: Run install.sh to fetch and patch sources
+        run: bash ./install.sh
+
+      - name: Build for all platforms
+        run: |
+          cd ~/repos/conduit/cli
+          make build-all
+
+      - name: Stage release artifacts
+        run: |
+          mkdir -p release
+          cd ~/repos/conduit/cli/dist
+          # Rename to make it obvious this is the IR-only fork.
+          for f in conduit-linux-amd64 conduit-linux-arm64 \
+                   conduit-darwin-amd64 conduit-darwin-arm64 \
+                   conduit-windows-amd64.exe; do
+            if [ -f "$f" ]; then
+              cp "$f" "$GITHUB_WORKSPACE/release/conduit-ir-${f#conduit-}"
+            fi
+          done
+          # Also bundle extract-config.py for convenience
+          cp "$GITHUB_WORKSPACE/extract-config.py" "$GITHUB_WORKSPACE/release/"
+          ls -la "$GITHUB_WORKSPACE/release/"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+          body: |
+            ## Conduit IR-only — patched binaries
+
+            **What:** Unofficial build of [Psiphon Conduit](https://github.com/Psiphon-Inc/conduit) that relays traffic only for clients in Iran.
+
+            **Get started:** see https://github.com/adpunt/conduit-ir-patch — three steps total.
+
+            **License:** GPL-3.0. **Not affiliated with Psiphon Inc.**
+
+            ### Which file do I download?
+
+            | Your computer | Download this file |
+            |---|---|
+            | Mac with Apple Silicon (M1/M2/M3/M4) | `conduit-ir-darwin-arm64` |
+            | Mac with Intel chip | `conduit-ir-darwin-amd64` |
+            | Windows | `conduit-ir-windows-amd64.exe` |
+            | Linux (most) | `conduit-ir-linux-amd64` |
+            | Linux on ARM (Raspberry Pi etc.) | `conduit-ir-linux-arm64` |
+
+            You also need `extract-config.py` (bundled above) to get a Psiphon config.
