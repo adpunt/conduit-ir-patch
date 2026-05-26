@@ -1,0 +1,8 @@
+# Never publish secrets or Psiphon-owned config
+psiphon_config.json
+data/
+*.key
+conduit_key.json
+
+# macOS junk
+.DS_Store

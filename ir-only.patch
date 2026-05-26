@@ -1,0 +1,31 @@
+From b69c9c3ace68df907661e1df51896339e65f9781 Mon Sep 17 00:00:00 2001
+From: Adelaide Punt <adelaidepunt@gmail.com>
+Date: Tue, 26 May 2026 20:26:27 +0100
+Subject: [PATCH] Hardcode IR-only client allowlist in proxyOneClient
+
+---
+ psiphon/common/inproxy/proxy.go | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/psiphon/common/inproxy/proxy.go b/psiphon/common/inproxy/proxy.go
+index 0156477..89baa04 100644
+--- a/psiphon/common/inproxy/proxy.go
++++ b/psiphon/common/inproxy/proxy.go
+@@ -1105,6 +1105,14 @@ func (p *Proxy) proxyOneClient(
+ 	}
+ 
+ 	clientRegion := announceResponse.ClientRegion
++
++	// IR-only allowlist (local fork). Reject non-IR matched clients with a
++	// non-backoff error so the announce loop immediately re-announces and the
++	// broker tries to match a different client.
++	if clientRegion != "IR" {
++		return false, errors.TraceNew("client region not allowed")
++	}
++
+ 	var regionActivity *RegionActivity
+ 	if clientRegion != "" {
+ 		regionActivity = p.getOrCreateRegionActivity(clientRegion, isPersonal)
+-- 
+2.47.1
+
