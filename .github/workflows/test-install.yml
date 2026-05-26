@@ -1,0 +1,50 @@
+name: Test install.sh
+
+on:
+  push:
+    paths:
+      - "install.sh"
+      - "ir-only.patch"
+      - ".github/workflows/test-install.yml"
+  schedule:
+    # Weekly health check: detects when upstream tunnel-core moves under us.
+    - cron: "0 7 * * 1"  # Mondays at 07:00 UTC
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Install on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run install.sh
+        run: bash ./install.sh
+
+      - name: Verify patched binary exists and runs
+        run: |
+          BIN="$HOME/repos/conduit/cli/dist/conduit"
+          test -x "$BIN" || { echo "Binary missing"; exit 1; }
+          "$BIN" --version
+          "$BIN" --help | head -5
+
+      - name: Verify patch is in source
+        run: |
+          PROXY="$HOME/repos/conduit/cli/psiphon-tunnel-core/psiphon/common/inproxy/proxy.go"
+          grep -q "IR-only allowlist" "$PROXY" || { echo "Patch not in source"; exit 1; }
+          echo "Patch confirmed in proxy.go"
+
+      - name: Verify replace directive in go.mod
+        run: |
+          MOD="$HOME/repos/conduit/cli/go.mod"
+          grep -q "replace github.com/Psiphon-Labs/psiphon-tunnel-core =>" "$MOD" || \
+            { echo "replace directive missing"; exit 1; }
+          echo "replace directive confirmed in go.mod"
+
+      - name: Re-run install.sh (idempotency check)
+        run: bash ./install.sh
