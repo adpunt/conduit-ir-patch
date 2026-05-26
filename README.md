@@ -53,9 +53,7 @@ It's three lines of logic plus a comment.
 
 You'll need:
 
-1. **A Mac or Linux computer** that stays on. (Windows is possible but these
-   instructions are for macOS/Linux. Windows users: use WSL2 and follow the
-   Linux steps.)
+1. **A computer that stays on.** Mac, Linux, or Windows are all fine.
 2. **About 1 GB of free disk space.**
 3. **About 30 minutes** the first time (mostly waiting for things to
    download).
@@ -63,65 +61,172 @@ You'll need:
    the part that isn't included in this repo and that you have to obtain
    yourself.
 5. **Comfort with copy-pasting commands into a Terminal.** If you've never
-   opened Terminal before, that's fine — just follow along carefully. Each
-   command does one specific thing and is explained.
+   opened a terminal before, that's fine — just follow along carefully.
+   Each command does one specific thing and is explained.
 
 You **don't** need a GitHub account, a developer license, or any prior
 programming knowledge.
 
 ---
 
-## Step 1 — Open Terminal
+## Step 1 — Open a terminal
 
-On a Mac: press `Cmd+Space`, type `Terminal`, press Enter. A black or white
-window will appear with a `$` or `%` prompt. That's Terminal. You'll paste
-commands into it and press Enter to run them.
+Pick your operating system:
 
-On Linux: open your usual terminal app.
+<details>
+<summary><b>macOS</b></summary>
+
+Press `Cmd+Space`, type `Terminal`, press Enter. A black or white window
+will appear with a `$` or `%` prompt. You'll paste commands into it and
+press Enter to run them.
+</details>
+
+<details>
+<summary><b>Linux (Ubuntu / Debian / Fedora / Arch / etc.)</b></summary>
+
+Open your usual terminal app. On Ubuntu it's called "Terminal" and lives
+in your Activities/Applications menu. On most distros pressing
+`Ctrl+Alt+T` opens one.
+</details>
+
+<details>
+<summary><b>Windows</b></summary>
+
+**Strongly recommended: use WSL2 (Windows Subsystem for Linux).** It's free,
+ships with Windows 10/11, and makes the rest of these instructions identical
+to Linux.
+
+1. Open Start menu, type "PowerShell", right-click "Windows PowerShell" and
+   pick "Run as administrator".
+2. In the blue window that opens, paste:
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+3. Restart your computer when it asks.
+4. After restart, an Ubuntu window will open and ask you to create a
+   username and password. Pick anything — this is just for the Linux side.
+5. From now on, open "Ubuntu" from the Start menu instead of PowerShell.
+   That's your terminal.
+
+**Then follow the Linux instructions below** — everything works the same.
+
+(Native Windows without WSL2 is technically possible but the build tooling
+is much more painful. If you have a strong reason to avoid WSL2, see
+"Native Windows notes" at the bottom of this README.)
+</details>
 
 ## Step 2 — Install the tools
 
-You need two programs: **Homebrew** (a package manager for Mac) and **Go**
-(the programming language Conduit is written in).
+You need three programs: a C compiler, **Git** (to download source code),
+and **Go 1.24** (the programming language Conduit is written in).
 
-### Install Homebrew (skip if you already have it)
+### Important: Go version
 
-Paste this into Terminal and press Enter. It will ask for your password:
+Conduit requires **specifically Go 1.24**. Go 1.25 and newer will not work
+— they break something in Psiphon's TLS code. Whichever method you use
+below, you must end up with Go 1.24.x.
+
+<details>
+<summary><b>macOS</b></summary>
+
+Install Homebrew first (skip if you already have it):
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-This downloads and installs Homebrew. It takes a few minutes.
-
-### Install Go version 1.24
-
-Conduit requires **specifically Go 1.24** (newer versions don't work with
-some of Psiphon's code). Paste:
+Then install Go 1.24 and Git:
 
 ```bash
-brew install go@1.24
+brew install go@1.24 git
 brew unlink go 2>/dev/null
 brew link --force go@1.24
 ```
 
-To check it worked, run:
+If Terminal asks to install "command line developer tools" at any point,
+click Install.
+</details>
+
+<details>
+<summary><b>Linux — Ubuntu / Debian / WSL2</b></summary>
+
+Install Git and build tools from apt:
+
+```bash
+sudo apt update
+sudo apt install -y git make build-essential curl
+```
+
+Ubuntu's `apt` ships a Go version that's probably wrong, so install Go 1.24
+manually from the official site:
+
+```bash
+curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+```
+
+(On ARM machines — including Raspberry Pi and Apple Silicon Macs running
+Linux VMs — replace `amd64` with `arm64` in the URL.)
+</details>
+
+<details>
+<summary><b>Linux — Fedora / RHEL / CentOS</b></summary>
+
+```bash
+sudo dnf install -y git make gcc curl
+```
+
+Then install Go 1.24 manually (same as Ubuntu above — Fedora's package
+version moves too fast):
+
+```bash
+curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+```
+</details>
+
+<details>
+<summary><b>Linux — Arch / Manjaro</b></summary>
+
+Arch's `go` package tracks Go's latest, which won't work. Install from
+the AUR or directly from go.dev:
+
+```bash
+sudo pacman -S git make gcc curl
+curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+```
+</details>
+
+### Check it worked
+
+In your terminal, run:
 
 ```bash
 go version
 ```
 
-You should see something like `go version go1.24.13 darwin/amd64`. The `1.24`
-part is what matters.
+You should see something like `go version go1.24.13 ...`. The `1.24` part
+is what matters. If it says `1.25`, `1.26`, or anything else, the build
+will fail — go back and install Go 1.24 specifically.
 
-On Linux, install Go 1.24 from https://go.dev/dl/ — pick the file named like
-`go1.24.x.linux-amd64.tar.gz` and follow the instructions on that page.
+Also run:
 
-### Install Git (if you don't have it)
+```bash
+git --version
+make --version
+```
 
-On macOS, type `git --version` in Terminal. If it asks you to install command
-line tools, click "Install". On Linux, use your package manager
-(`sudo apt install git` on Ubuntu/Debian).
+Both should print version info (no errors).
 
 ## Step 3 — Get the source code
 
@@ -152,13 +257,11 @@ code:
 
 ```bash
 cd ~/repos/conduit/cli/psiphon-tunnel-core
-curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/conduit-ir-patch/main/ir-only.patch | git apply
+curl -fsSL https://raw.githubusercontent.com/adpunt/conduit-ir-patch/main/ir-only.patch | git apply
 ```
 
-> **Replace `YOUR_GITHUB_USERNAME`** with whatever GitHub user/org actually
-> hosts this repo. If you got this file outside of GitHub, you can also save
-> `ir-only.patch` somewhere on disk and run `git apply /path/to/ir-only.patch`
-> instead.
+> If you got this file outside of GitHub, you can also save `ir-only.patch`
+> somewhere on disk and run `git apply /path/to/ir-only.patch` instead.
 
 You can verify the patch landed by running:
 
@@ -372,3 +475,25 @@ license text.
 - **This is not a substitute for using Psiphon as a user.** If *you* are
   the one trying to bypass censorship, you want the regular Psiphon app,
   not Conduit.
+
+---
+
+## Appendix: Native Windows notes (advanced)
+
+If you really don't want WSL2 and want to build directly on Windows:
+
+1. **Install Git for Windows** from https://git-scm.com/download/win — this
+   gives you `git` and a Bash-like terminal called "Git Bash".
+2. **Install Go 1.24** from https://go.dev/dl/ — pick `go1.24.x.windows-amd64.msi`
+   and run it. (Don't pick the latest version — must be 1.24.)
+3. **Install Make** — Conduit's build uses `make`. Easiest way is via
+   [Chocolatey](https://chocolatey.org/install): `choco install make`.
+   Alternatively install [Scoop](https://scoop.sh/) and run `scoop install make`.
+4. **Install a C toolchain** — `choco install mingw` or install
+   [MSYS2](https://www.msys2.org/) and add its `mingw64/bin` to PATH.
+5. Use **Git Bash** (not PowerShell or cmd) for the rest of the steps. The
+   `~/repos/` path will work in Git Bash and refers to
+   `C:\Users\YourName\repos\`.
+
+Honestly, WSL2 is much less work. Use it unless you have a strong reason
+not to.
