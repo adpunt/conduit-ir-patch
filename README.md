@@ -1,141 +1,92 @@
 # Conduit, but only for Iran
 
-This is a small patch to **Psiphon Conduit** that makes your Conduit proxy
-help **only people connecting from Iran**. Conduit normally helps anyone in
-any censored country. This patch turns down everyone except people in Iran.
+This is a small modification to **Psiphon Conduit** that makes your home
+computer help **only people connecting from Iran** get around internet
+censorship.
 
-> ⚠️ **Important:** This is an unofficial patch. It is not affiliated with,
-> endorsed by, or supported by Psiphon Inc. If something goes wrong, do
-> **not** contact Psiphon about it. See `NOTICE.md` for full attribution.
+Normally Conduit helps anyone in any censored country. This version is
+narrower: if the user isn't in Iran, your computer politely refuses and
+waits for the next one.
 
----
-
-## What Conduit is, in plain English
-
-Psiphon is a free tool that helps people get around internet censorship in
-countries like Iran, China, and Russia. **Conduit** is a companion program:
-you run it on your home computer, and it lets Psiphon use a small slice of
-your internet connection to relay traffic for people stuck behind censorship.
-
-You don't see what they do. They don't see who you are. Psiphon's servers sit
-in the middle and handle all of that.
-
-Psiphon's official version of Conduit will match you with users from
-**any** censored country. This patched version matches you with users from
-**Iran only**.
-
-## Why someone might want this
-
-You might prefer to help users from one specific country if:
-
-- You are donating to a particular cause (e.g. Iranian protesters)
-- You want to be sure your bandwidth is going where you think it is
-
-You probably **do not** want this if:
-
-- You just want to help as many people as possible — use the official
-  Conduit instead. It will match you to wherever demand is highest, which is
-  more efficient overall.
-
-## What this actually does to the code
-
-The patch adds **8 lines** to one file in Psiphon's open-source code. When
-Psiphon's matchmaking server offers you a user to relay, your proxy now
-checks the country code. If it isn't `IR` (Iran), it politely refuses and
-asks for a different user. That's the whole change.
-
-The patch is the file `ir-only.patch` in this repository. You can read it.
-It's three lines of logic plus a comment.
+> ⚠️ **This is unofficial.** It is not made by, endorsed by, or supported
+> by Psiphon Inc. If something goes wrong, don't email Psiphon about it.
+> See `NOTICE.md` for full details.
 
 ---
 
-## What you need before you start
+## Should I do this?
 
-You'll need:
+**Yes, probably**, if you:
 
-1. **A computer that stays on.** Mac, Linux, or Windows are all fine.
-2. **About 1 GB of free disk space.**
-3. **About 30 minutes** the first time (mostly waiting for things to
-   download).
-4. **A Psiphon config file** — see "Getting a Psiphon config" below. This is
-   the part that isn't included in this repo and that you have to obtain
-   yourself.
-5. **Comfort with copy-pasting commands into a Terminal.** If you've never
-   opened a terminal before, that's fine — just follow along carefully.
-   Each command does one specific thing and is explained.
+- Care about helping people in Iran specifically
+- Have a Mac or a Windows PC that's on most of the day
+- Have a home internet connection with some bandwidth to spare
+- Are willing to follow ~10 copy-paste commands in a terminal window
 
-You **don't** need a GitHub account, a developer license, or any prior
-programming knowledge.
+**No**, if you:
+
+- Just want to help as many people as possible — use the [official
+  Conduit](https://github.com/Psiphon-Inc/conduit) instead. It will
+  help users from wherever demand is highest.
+- Are on a metered or very slow connection
+- Are in a country where running a circumvention proxy is illegal —
+  know your local laws
+
+---
+
+## What you'll do
+
+There are seven short steps. Each one is one or two commands you paste
+into a terminal window. The whole thing takes about 30 minutes the first
+time, mostly waiting for downloads.
+
+> **Stuck on any step?** Skip to the **"If something goes wrong"** section
+> at the bottom — there's a simple trick using ChatGPT/Claude that will
+> almost certainly unstick you.
+
+---
+
+## Setup (Windows users only)
+
+If you're on a **Mac**, skip this — go to Step 1.
+
+If you're on **Windows**, you first need to install something called
+**WSL2**, which is just a free Linux environment that comes with Windows.
+This makes the rest of the instructions work.
+
+1. Press the Start button, type `PowerShell`, **right-click** "Windows
+   PowerShell", and choose **"Run as administrator"**. A blue window opens.
+2. Paste this and press Enter:
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+3. **Restart your computer** when it asks.
+4. After restart, a window labeled "Ubuntu" will open automatically and
+   ask you to make up a username and password. Pick anything — this is
+   for the Linux side, separate from your Windows login.
+5. From now on, whenever the instructions say "open a terminal," you'll
+   open **Ubuntu** from your Start menu.
+
+Now follow the rest of the steps. The commands are identical to what a
+Linux user would type.
 
 ---
 
 ## Step 1 — Open a terminal
 
-Pick your operating system:
+- **Mac:** Press `Cmd+Space`, type `Terminal`, press Enter.
+- **Windows:** Open **Ubuntu** from your Start menu.
 
-<details>
-<summary><b>macOS</b></summary>
+A window opens with a `$` or `%` prompt. That's where you type. To "run a
+command," you paste the command and press Enter. To paste, use
+`Cmd+V` on Mac or `Ctrl+Shift+V` in Ubuntu.
 
-Press `Cmd+Space`, type `Terminal`, press Enter. A black or white window
-will appear with a `$` or `%` prompt. You'll paste commands into it and
-press Enter to run them.
-</details>
+## Step 2 — Install Go and Git
 
-<details>
-<summary><b>Linux (Ubuntu / Debian / Fedora / Arch / etc.)</b></summary>
+These are the two tools you need. Go is the programming language Conduit
+is written in. Git downloads source code.
 
-Open your usual terminal app. On Ubuntu it's called "Terminal" and lives
-in your Activities/Applications menu. On most distros pressing
-`Ctrl+Alt+T` opens one.
-</details>
-
-<details>
-<summary><b>Windows</b></summary>
-
-**Strongly recommended: use WSL2 (Windows Subsystem for Linux).** It's free,
-ships with Windows 10/11, and makes the rest of these instructions identical
-to Linux.
-
-1. Open Start menu, type "PowerShell", right-click "Windows PowerShell" and
-   pick "Run as administrator".
-2. In the blue window that opens, paste:
-   ```powershell
-   wsl --install -d Ubuntu
-   ```
-3. Restart your computer when it asks.
-4. After restart, an Ubuntu window will open and ask you to create a
-   username and password. Pick anything — this is just for the Linux side.
-5. From now on, open "Ubuntu" from the Start menu instead of PowerShell.
-   That's your terminal.
-
-**Then follow the Linux instructions below** — everything works the same.
-
-(Native Windows without WSL2 is technically possible but the build tooling
-is much more painful. If you have a strong reason to avoid WSL2, see
-"Native Windows notes" at the bottom of this README.)
-</details>
-
-## Step 2 — Install the tools
-
-You need three programs: a C compiler, **Git** (to download source code),
-and **Go 1.24** (the programming language Conduit is written in).
-
-### Important: Go version
-
-Conduit requires **specifically Go 1.24**. Go 1.25 and newer will not work
-— they break something in Psiphon's TLS code. Whichever method you use
-below, you must end up with Go 1.24.x.
-
-<details>
-<summary><b>macOS</b></summary>
-
-Install Homebrew first (skip if you already have it):
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-Then install Go 1.24 and Git:
+**On Mac:**
 
 ```bash
 brew install go@1.24 git
@@ -143,24 +94,16 @@ brew unlink go 2>/dev/null
 brew link --force go@1.24
 ```
 
-If Terminal asks to install "command line developer tools" at any point,
-click Install.
-</details>
+If you don't have Homebrew (`brew`) yet, install it first by pasting this:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
 
-<details>
-<summary><b>Linux — Ubuntu / Debian / WSL2</b></summary>
-
-Install Git and build tools from apt:
+**On Windows (in your Ubuntu terminal) / Linux:**
 
 ```bash
 sudo apt update
 sudo apt install -y git make build-essential curl
-```
-
-Ubuntu's `apt` ships a Go version that's probably wrong, so install Go 1.24
-manually from the official site:
-
-```bash
 curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
 sudo rm -rf /usr/local/go
 sudo tar -C /usr/local -xzf /tmp/go.tar.gz
@@ -168,124 +111,63 @@ echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-(On ARM machines — including Raspberry Pi and Apple Silicon Macs running
-Linux VMs — replace `amd64` with `arm64` in the URL.)
-</details>
+`sudo` will ask for your password. That's normal.
 
-<details>
-<summary><b>Linux — Fedora / RHEL / CentOS</b></summary>
-
-```bash
-sudo dnf install -y git make gcc curl
-```
-
-Then install Go 1.24 manually (same as Ubuntu above — Fedora's package
-version moves too fast):
-
-```bash
-curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
-sudo rm -rf /usr/local/go
-sudo tar -C /usr/local -xzf /tmp/go.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-source ~/.bashrc
-```
-</details>
-
-<details>
-<summary><b>Linux — Arch / Manjaro</b></summary>
-
-Arch's `go` package tracks Go's latest, which won't work. Install from
-the AUR or directly from go.dev:
-
-```bash
-sudo pacman -S git make gcc curl
-curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz
-sudo rm -rf /usr/local/go
-sudo tar -C /usr/local -xzf /tmp/go.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-source ~/.bashrc
-```
-</details>
-
-### Check it worked
-
-In your terminal, run:
+**Check it worked** (both OSes, paste this):
 
 ```bash
 go version
 ```
 
-You should see something like `go version go1.24.13 ...`. The `1.24` part
-is what matters. If it says `1.25`, `1.26`, or anything else, the build
-will fail — go back and install Go 1.24 specifically.
+You should see something like `go version go1.24.13 ...`. The number must
+start with **1.24**. If it doesn't, the build will fail later — go back
+and re-do this step.
 
-Also run:
-
-```bash
-git --version
-make --version
-```
-
-Both should print version info (no errors).
-
-## Step 3 — Get the source code
-
-Make a folder to keep everything in, then download Psiphon's Conduit source:
+## Step 3 — Download Conduit's source code
 
 ```bash
 mkdir -p ~/repos
 cd ~/repos
 git clone https://github.com/Psiphon-Inc/conduit.git
-```
-
-This downloads the official Conduit source code from Psiphon. About 50 MB.
-
-Now download the helper code Conduit needs:
-
-```bash
-cd ~/repos/conduit/cli
+cd conduit/cli
 make setup
 ```
 
-This will print a lot of "downloading..." lines. Wait for it to finish.
-About 5–10 minutes depending on your connection.
+That last line, `make setup`, prints a *lot* of `downloading...` lines and
+takes 5–10 minutes. That's normal. Wait for it to finish (your prompt
+will come back).
 
-## Step 4 — Apply this patch
-
-Download the patch file from this repository and apply it to the source
-code:
+## Step 4 — Apply the IR-only patch
 
 ```bash
 cd ~/repos/conduit/cli/psiphon-tunnel-core
 curl -fsSL https://raw.githubusercontent.com/adpunt/conduit-ir-patch/main/ir-only.patch | git apply
 ```
 
-> If you got this file outside of GitHub, you can also save `ir-only.patch`
-> somewhere on disk and run `git apply /path/to/ir-only.patch` instead.
-
-You can verify the patch landed by running:
+This downloads the 8-line patch from this repository and applies it. To
+confirm it worked, paste:
 
 ```bash
-grep -A1 "IR-only allowlist" psiphon/common/inproxy/proxy.go
+grep "IR-only allowlist" psiphon/common/inproxy/proxy.go
 ```
 
-You should see the comment and the `if clientRegion != "IR"` line printed
-back to you.
+If you see the words printed back at you, the patch is in place.
 
-## Step 5 — Tell Conduit to use your patched code
+## Step 5 — Tell the build to use your patched code
 
-Open the file `~/repos/conduit/cli/go.mod` in any text editor (TextEdit is
-fine on Mac). Scroll to the bottom. Add these two lines at the very end:
+```bash
+cd ~/repos/conduit/cli
+cat >> go.mod <<'EOF'
 
-```
-// Local fork: IR-only client allowlist patch in psiphon/common/inproxy/proxy.go
+// Local fork: IR-only client allowlist patch
 replace github.com/Psiphon-Labs/psiphon-tunnel-core => ./psiphon-tunnel-core
+EOF
 ```
 
-Save the file. This tells the build to use *your* patched copy of Psiphon's
-code instead of downloading the unpatched version from the internet.
+This appends two lines to a configuration file. There's no visible output
+— that means it worked.
 
-## Step 6 — Build it
+## Step 6 — Build the patched Conduit
 
 ```bash
 cd ~/repos/conduit/cli
@@ -293,207 +175,319 @@ go mod tidy
 make build
 ```
 
-`go mod tidy` updates some internal bookkeeping. `make build` compiles the
-program. It will take a couple of minutes the first time. When it's done,
-your custom Conduit binary lives at:
+This takes a couple of minutes. When it finishes, you have a custom
+Conduit binary at `~/repos/conduit/cli/dist/conduit`.
+
+## Step 7 — Get a Psiphon config file
+
+This is the one step that **isn't** a paste-able command. Psiphon's
+network config belongs to Psiphon — it isn't included in this repo and
+you have to ask them for it.
+
+Email **`conduit-oss@psiphon.ca`** and say something like:
+
+> Hi, I'd like to run Conduit built from source. Could you send me a
+> network config file?
+
+When they reply with a `psiphon_config.json` file, save it to:
 
 ```
-~/repos/conduit/cli/dist/conduit
+~/repos/conduit/cli/dist/psiphon_config.json
 ```
 
-## Step 7 — Getting a Psiphon config
+(On Mac, that path means `/Users/yourname/repos/conduit/cli/dist/psiphon_config.json`. On WSL2 Ubuntu, you can drag the file into the terminal window or use `mv ~/Downloads/psiphon_config.json ~/repos/conduit/cli/dist/`.)
 
-This is the part that is **not in this repo**, because the config file
-belongs to Psiphon, not to me.
+---
 
-You have two options:
+## Running it
 
-**Option A — Ask Psiphon nicely (recommended).** Email
-`conduit-oss@psiphon.ca` and explain you'd like to run Conduit from source.
-They handle this kind of request.
-
-**Option B — Extract from an official release.** Download the official
-Conduit release for your platform from
-https://github.com/Psiphon-Inc/conduit/releases — the config is embedded
-inside the binary. Extracting it is a couple of lines of Python; you can
-find the technique online by searching for "extract go:embed". This is a
-grey area: the config isn't secret (it's inside every public release), but
-some people consider repackaging it impolite. Use your own judgment.
-
-Whichever you do, save the file as `psiphon_config.json` in
-`~/repos/conduit/cli/dist/`.
-
-## Step 8 — Run it
+Once your config is in place:
 
 ```bash
 cd ~/repos/conduit/cli/dist
 ./conduit start -c psiphon_config.json -m 10 -b 20
 ```
 
-This starts your Conduit proxy with:
-- `-c psiphon_config.json` — the config you just put there
-- `-m 10` — at most 10 simultaneous users at a time
-- `-b 20` — capped at 20 Mbps total bandwidth
+- `-m 10` — at most 10 users at a time (start small, you can increase later)
+- `-b 20` — at most 20 Mbps total bandwidth shared between them
+  (use `-b -1` for "unlimited")
 
-Adjust `-m` and `-b` to whatever you're comfortable with. Use `-m 5 -b 5`
-for very conservative, `-m 50 -b -1` for "give everything I've got." For
-testing, `-m 1 -b 5` is fine.
+You'll see logs scroll by. To stop, press **`Ctrl+C`**.
 
-You will see a lot of log lines fly by. That's normal.
+### How to know it's working
 
-## How to know it's working
+About a minute after startup, watch for:
 
-The proxy takes about a minute to fully start up. After that, look for
-these lines:
-
-- `Starting Psiphon Conduit (...)` — confirms it launched
-- `inproxy proxy: announce` — confirms you're telling Psiphon you're
-  available
-- `client region not allowed` — confirms the IR filter is doing its job
+- `Starting Psiphon Conduit` — it launched
+- `inproxy proxy: announce` — it's telling Psiphon you're available
+- `client region not allowed` — your IR-only filter is doing its job
   (rejecting a non-Iran user)
-- `inProxyActivityStats` with byte counts — someone in Iran is actually
-  using your proxy 🎉
+- `inProxyActivityStats` with byte counts — **someone in Iran is using
+  your proxy 🎉**
 
-If you only see `client region not allowed` and never see actual traffic,
-that's fine — it just means right now Psiphon happens to be sending you
-non-Iran users. Leave it running. Demand from Iran fluctuates by time of
-day.
+If you only see "client region not allowed" and never see actual
+traffic, that's fine. It just means right now Psiphon happens to be
+trying to send you non-Iranian users. Demand from Iran fluctuates. Leave
+it running.
 
-## How to stop it
+---
 
-Press `Ctrl-C` in the Terminal window. You'll see "Shutting down..." and
-then "Stopped." That's it.
+## If something goes wrong
 
-## Running it in the background (optional)
+The single most useful thing you can do is **ask an AI assistant** like
+ChatGPT, Claude, or Gemini.
 
-If you want it to keep running while you close Terminal, the simplest way
-is `nohup`:
+1. Find the error message in your terminal (usually the last few red or
+   bold lines).
+2. Highlight it with your mouse, copy it (Cmd+C / Ctrl+Shift+C).
+3. Open ChatGPT (or Claude, or any AI chat).
+4. Paste this:
+
+   > I'm following the instructions at
+   > https://github.com/adpunt/conduit-ir-patch and got this error:
+   >
+   > [paste your error here]
+   >
+   > Which step does this look like a problem with, and how do I fix it?
+
+The AI can read this README, understand which step you were on, and walk
+you through the fix. This works astonishingly well — better than trying
+to follow generic troubleshooting guides.
+
+If the AI's suggestion doesn't work, paste its response back, then your
+new error, and ask again. Two or three rounds will usually resolve it.
+
+If you're still stuck after that, open an issue at
+https://github.com/adpunt/conduit-ir-patch/issues with the error and the
+step you were on.
+
+---
+
+## How to verify this isn't doing anything sketchy
+
+You're about to run code on your computer. Healthy paranoia is good.
+Here's what to check:
+
+### What this repository contains
+
+This repo is **tiny** — five files, less than 200 lines of code:
+
+| File | What it is |
+|---|---|
+| `ir-only.patch` | The actual change to Psiphon's code. 8 lines of Go. |
+| `install.sh` | An installer script (used by CI; you don't need it). |
+| `README.md` | This file. |
+| `NOTICE.md` | Attribution and disclaimer. |
+| `LICENSE` | GPL-3.0 text (same license Psiphon uses). |
+
+**The instructions above do not run `install.sh`.** They walk you through
+each command manually. You can see every command before you paste it.
+
+### The patch itself
+
+Here is the entire functional change. You can see it in
+[`ir-only.patch`](ir-only.patch):
+
+```go
+clientRegion := announceResponse.ClientRegion
+
+// IR-only allowlist (local fork). Reject non-IR matched clients with a
+// non-backoff error so the announce loop immediately re-announces and the
+// broker tries to match a different client.
+if clientRegion != "IR" {
+    return false, errors.TraceNew("client region not allowed")
+}
+```
+
+That's it. Four lines of actual logic. The patch:
+
+- **Does** check the country code of each incoming user and skip them if
+  they aren't from Iran
+- **Does not** send any data anywhere
+- **Does not** modify Psiphon's encryption, certificates, or signing keys
+- **Does not** install any background services
+- **Does not** read any of your files
+
+### Where does the actual Conduit code come from?
+
+Step 3 downloads Conduit directly from **Psiphon's own GitHub repository**
+(`github.com/Psiphon-Inc/conduit`). This repo only contributes the 8-line
+patch — everything else is fetched from Psiphon's official source. So you
+are running 99.99% Psiphon-Inc code plus our 8-line addition.
+
+### Continuous Integration
+
+The `install.sh` script in this repo is automatically tested on fresh
+Ubuntu and macOS machines by GitHub every time anything changes. You can
+see the test results at
+[Actions](https://github.com/adpunt/conduit-ir-patch/actions). If you
+ever see a red ✗ there, don't run anything in this repo until it's
+green again.
+
+---
+
+## Below the fold
+
+### Privacy and what your computer is actually doing
+
+- Your computer will encrypt and pass through other people's web traffic.
+  You **don't** see what they're doing. They **don't** see who you are.
+- Your ISP will see an unusual amount of encrypted traffic to and from
+  your computer. In most countries this is fine. In a few it isn't.
+- This is **not** the same as using Psiphon yourself to bypass
+  censorship. If *you* want to bypass censorship, install the regular
+  [Psiphon app](https://psiphon.ca/), not this.
+
+### Updating later
+
+Every few months Psiphon updates Conduit. To get those updates while
+keeping your IR-only patch:
+
+```bash
+cd ~/repos/conduit && git pull
+cd cli/psiphon-tunnel-core && git pull
+cd ~/repos/conduit/cli/psiphon-tunnel-core
+curl -fsSL https://raw.githubusercontent.com/adpunt/conduit-ir-patch/main/ir-only.patch | git apply
+cd ~/repos/conduit/cli
+make build
+```
+
+If `git apply` fails, Psiphon changed something near the patched lines.
+Ask ChatGPT/Claude to help you re-apply by hand.
+
+### Running it permanently in the background
 
 ```bash
 cd ~/repos/conduit/cli/dist
 nohup ./conduit start -c psiphon_config.json -m 10 -b 20 > conduit.log 2>&1 &
 ```
 
-To stop it later:
+Stop it later with `pkill -f "conduit start"`.
+
+### Credit
+
+All of Conduit and `psiphon-tunnel-core` is the work of **Psiphon Inc.**
+and its many contributors. The hard parts — circumvention protocols,
+WebRTC negotiation, server matchmaking, the entire Psiphon network —
+are all theirs. This repo is an 8-line tweak.
+
+If you find this useful and want to support the underlying project, the
+best thing you can do is **also run the [official Conduit](https://github.com/Psiphon-Inc/conduit)** on a second device.
+It helps people from every censored country, not just Iran.
+
+### License
+
+GPL-3.0, the same license Psiphon uses. See [`LICENSE`](LICENSE) and
+[`NOTICE.md`](NOTICE.md) for details.
+
+---
+
+## Maintainer notes (for whoever owns this repo)
+
+This section is for the person maintaining `conduit-ir-patch`, not for
+end users. If you're just installing Conduit, ignore everything below.
+
+### When to update this repo
+
+Psiphon's `staging-client` branch in `psiphon-tunnel-core` moves often.
+You should check in on this repo at least every **1–2 months** and after
+any major Conduit release. The two things that go stale are:
+
+1. **The patch itself** — if Psiphon refactored `proxyOneClient` in
+   `psiphon/common/inproxy/proxy.go`, `git apply ir-only.patch` will start
+   failing for users.
+2. **The Go version pin** — Psiphon may eventually move to Go 1.25+ or
+   require a newer minimum. The `install.sh` and README still tell users
+   to install Go 1.24.
+
+The CI on this repo (`.github/workflows/test-install.yml`) runs the full
+install on fresh Ubuntu and macOS every time you push, **and** on a
+weekly schedule. If you wake up to a red ✗, upstream broke us.
+
+### Quick health check
+
+Without changing anything, you can verify the patch still applies cleanly:
 
 ```bash
-pkill -f "conduit start"
+cd /tmp
+rm -rf check-patch && git clone --depth 1 https://github.com/Psiphon-Labs/psiphon-tunnel-core.git -b staging-client check-patch
+cd check-patch
+curl -fsSL https://raw.githubusercontent.com/adpunt/conduit-ir-patch/main/ir-only.patch | git apply --check
 ```
 
-To watch its log:
+If `--check` exits 0, you're fine. If it complains about hunks failing,
+the patch needs updating.
+
+### How to refresh the patch when it breaks
 
 ```bash
-tail -f ~/repos/conduit/cli/dist/conduit.log
+# 1. Clone fresh and build a working version locally
+cd ~/repos
+rm -rf conduit-refresh
+git clone https://github.com/Psiphon-Inc/conduit.git conduit-refresh
+cd conduit-refresh/cli
+make setup
+
+# 2. Manually re-apply the 4-line check in the new proxy.go
+#    Find the line: `clientRegion := announceResponse.ClientRegion`
+#    Insert immediately after it:
+#
+#      if clientRegion != "IR" {
+#          return false, errors.TraceNew("client region not allowed")
+#      }
+#
+#    (plus a 3-line comment block above it, see ir-only.patch)
+
+# 3. Commit on a local branch of the tunnel-core clone
+cd psiphon-tunnel-core
+git checkout -b ir-only-filter
+git add psiphon/common/inproxy/proxy.go
+git commit -m "Hardcode IR-only client allowlist in proxyOneClient"
+
+# 4. Regenerate the .patch file
+git format-patch -1 HEAD --stdout > ~/repos/conduit-ir-patch/ir-only.patch
+
+# 5. Commit and push the updated patch
+cd ~/repos/conduit-ir-patch
+git add ir-only.patch
+git commit -m "Refresh patch against latest staging-client (<date>)"
+git push
 ```
 
-For a proper "always running" setup, look up `launchd` (macOS) or `systemd`
-(Linux) — but that's beyond the scope of this guide.
+CI will run automatically on the push and confirm the new patch works on
+both OSes.
 
----
+### How to update the Go version requirement
 
-## Troubleshooting
+If Conduit's `Makefile` ever bumps `GO_REQUIRED_VERSION` (currently
+`1.24`), search-and-replace `1.24` → `<new version>` in:
 
-**"go: command not found"** — Go isn't installed or isn't on your PATH. Run
-the `brew install go@1.24` step again.
+- `README.md` (multiple places)
+- `install.sh` (the Linux Go install URL and version checks)
+- `.github/workflows/test-install.yml` (no explicit pin — it uses
+  install.sh — but verify CI still passes)
 
-**"Error: psiphon config required"** — You haven't put `psiphon_config.json`
-next to the binary. See Step 7.
+Then push and check CI.
 
-**Logs say "no broker specs" forever** — Wait a minute or two. On first run
-Conduit has to download a server list before it can do anything. If it
-still isn't working after 5 minutes, your config file may not be valid.
+### Sanity-check the README against `install.sh`
 
-**Logs say "Go 1.25 detected, but Go 1.24.x is required"** — You're on the
-wrong Go version. Run `brew unlink go && brew link --force go@1.24`.
+The README walks users through commands by hand; `install.sh` does the
+same commands inside CI. These two **must stay in sync** or CI will pass
+while real users hit problems (or vice versa). Specifically check:
 
-**The patch won't apply ("patch does not apply")** — Psiphon's code has
-moved since the patch was written. Open `ir-only.patch` and apply the
-change by hand: in `psiphon/common/inproxy/proxy.go`, find the line that
-says `clientRegion := announceResponse.ClientRegion` and paste the 6 lines
-of `if clientRegion != "IR" { ... }` below it. Then re-run Step 6.
+- Apt packages installed (Linux)
+- Homebrew packages installed (macOS)
+- Go install method/URL
+- `make setup` step
+- Patch URL
+- `go.mod` replace directive text
+- Build command
 
-**I'm seeing no traffic at all** — Right now there may simply be no Iranian
-users matched to you. Try leaving it running for an hour. If still nothing,
-double-check your config file is valid by running the unpatched official
-Conduit binary with the same config — if *that* sees traffic and yours
-doesn't, the patch is working as intended (the broker isn't sending IR
-users to you specifically).
+If you change one, change the other.
 
----
+### When to delete this repo
 
-## Updating later
-
-Psiphon updates Conduit frequently. Every few months you may want to pull
-in their latest fixes:
-
-```bash
-cd ~/repos/conduit && git pull
-cd cli/psiphon-tunnel-core && git pull
-cd ~/repos/conduit/cli/psiphon-tunnel-core
-git apply ~/path/to/ir-only.patch
-cd ~/repos/conduit/cli
-make build
-```
-
-If `git apply` fails because Psiphon has changed the file around your
-patch, you'll need to apply the 6-line change by hand (see Troubleshooting).
-
----
-
-## Credit where it's due
-
-**Conduit and `psiphon-tunnel-core` are the work of Psiphon Inc. and its
-many contributors over more than a decade.** The hard parts — circumvention
-protocols, WebRTC negotiation, server matchmaking, the network itself —
-are all theirs. None of it is mine.
-
-This repository is an 8-line tweak. It only exists because Psiphon
-generously licenses their work under GPL-3.0, which explicitly permits
-modifications like this.
-
-If you find this patch useful and want to support the underlying project,
-the best thing you can do is also run the **official** Conduit alongside
-this one. The official version helps users from every censored country,
-not just Iran.
-
-See `NOTICE.md` for the full disclaimer and `LICENSE` for the GPL-3.0
-license text.
-
----
-
-## Privacy and safety notes
-
-- **You will be acting as a relay for someone else's encrypted internet
-  traffic.** You do not see what they are doing. They are protected by
-  Psiphon's encryption.
-- **You will not see who is using your proxy** (no IP addresses, no
-  identities, no browsing history).
-- **Your ISP will see** an unusual amount of encrypted traffic going to and
-  from your computer. In most countries this is fine. In some countries,
-  running a circumvention proxy may itself be discouraged or illegal —
-  know your local laws.
-- **This is not a substitute for using Psiphon as a user.** If *you* are
-  the one trying to bypass censorship, you want the regular Psiphon app,
-  not Conduit.
-
----
-
-## Appendix: Native Windows notes (advanced)
-
-If you really don't want WSL2 and want to build directly on Windows:
-
-1. **Install Git for Windows** from https://git-scm.com/download/win — this
-   gives you `git` and a Bash-like terminal called "Git Bash".
-2. **Install Go 1.24** from https://go.dev/dl/ — pick `go1.24.x.windows-amd64.msi`
-   and run it. (Don't pick the latest version — must be 1.24.)
-3. **Install Make** — Conduit's build uses `make`. Easiest way is via
-   [Chocolatey](https://chocolatey.org/install): `choco install make`.
-   Alternatively install [Scoop](https://scoop.sh/) and run `scoop install make`.
-4. **Install a C toolchain** — `choco install mingw` or install
-   [MSYS2](https://www.msys2.org/) and add its `mingw64/bin` to PATH.
-5. Use **Git Bash** (not PowerShell or cmd) for the rest of the steps. The
-   `~/repos/` path will work in Git Bash and refers to
-   `C:\Users\YourName\repos\`.
-
-Honestly, WSL2 is much less work. Use it unless you have a strong reason
-not to.
+If Psiphon ever ships per-country filtering as a first-class feature
+(e.g., a `--allowed-regions IR` flag on the official binary), this patch
+becomes unnecessary. At that point, archive the repo with a final commit
+that points users at the official mechanism.
