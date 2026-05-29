@@ -22,12 +22,12 @@ jobs:
         with:
           go-version: "1.24.x"
 
-      - name: Run install.sh to fetch and patch sources
+      - name: Fetch and build sources via the conduit-ir fork
         run: bash ./install.sh
 
-      - name: Build patched Conduit for all platforms
+      - name: Build IR-only Conduit for all platforms
         run: |
-          cd ~/repos/conduit/cli
+          cd ~/repos/conduit-ir/cli
           make build-all
 
       - name: Build extract-config for all platforms
@@ -51,7 +51,7 @@ jobs:
 
       - name: Stage Conduit binaries
         run: |
-          cd ~/repos/conduit/cli/dist
+          cd ~/repos/conduit-ir/cli/dist
           for f in conduit-linux-amd64 conduit-linux-arm64 \
                    conduit-darwin-amd64 conduit-darwin-arm64 \
                    conduit-windows-amd64.exe; do

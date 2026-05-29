@@ -9,20 +9,28 @@ that relays internet traffic **only for people in Iran**.
 
 ## What is Conduit
 
-Conduit lets people in regions with internet censorship route their internet through your 
-device. Their requests travel encrypted to your machine, then out
-to the wider internet from your IP. Blocked websites see your IP,
-not theirs. Their internet provider sees encrypted traffic going to
-your computer, but can't see what's inside.
+Conduit lets people in regions with internet censorship reach the
+open internet through your device. It works like Tor's Snowflake: your
+computer is a **bridge, not an exit**. Someone in Iran makes an
+encrypted connection to your machine, and your machine relays that
+still-encrypted traffic onward to a **Psiphon server**, which is what
+actually connects out to the wider internet on their behalf. So the
+websites they visit see the Psiphon server's IP, **not yours** — and
+your computer never sees what they're doing inside the tunnel.
+Psiphon's own code enforces this: your node can only relay to Psiphon
+servers, never to arbitrary sites. Your home internet provider just
+sees encrypted traffic between you and the people you help, and
+between you and Psiphon's servers — never the contents.
 
 **The scale.** During the January 2026 blackout, [Iran International
 reported](https://www.iranintl.com/en/202601240957) more than 40,000
-Iranians connected through Conduit volunteers at once, out of 2.8
-million daily connection attempts from inside Iran. Iran has more
-Psiphon users than any country in the world. The standard Conduit
-mobile app caps each volunteer at 25 simultaneous users; this
-command-line build lets you raise that ceiling on a machine that can
-handle it (50 is a comfortable starting point — see Step 3).
+Iranians connected through Conduit volunteers at once; on January 22,
+more than half of Psiphon Conduit's 2.8 million connection attempts
+came from inside Iran. Iran has more Psiphon users than any country in
+the world. A volunteer running the standard Conduit phone app serves
+only around 25 people; this command-line build runs on a real
+computer, so you can raise that number well past what a phone can
+handle (50 is a comfortable starting point — see Step 3).
 
 **What it's good for.** Conduit is built for getting through
 censorship, and it's good at that job. It reliably unblocks the
@@ -46,11 +54,13 @@ Independent security audits by Cure53 ([2017](https://cure53.de/pentest-report_p
 [2024 tunnel-core](https://cure53.de/pentest-report_psiphon_4.pdf))
 found no catastrophic flaws, with a separate
 [audit of the Conduit library itself](https://cure53.de/pentest-report_psiphon-conduit-library_2.pdf).
-Traffic also exits from your home IP rather than bouncing through
-multiple anonymous hops, so a determined state-level adversary
-watching both ends of a connection could in principle correlate
-them. You (the operator) can observe traffic patterns through your
-machine, though not the content.
+And because their traffic rides a single Psiphon tunnel — exiting at a
+Psiphon server rather than bouncing through multiple anonymous hops
+the way Tor does — a determined state-level adversary watching both
+ends could in principle correlate them. As the operator you can see
+the volume and timing of the encrypted traffic crossing your machine,
+but not its content; Psiphon's design keeps the relayed tunnel opaque
+to you.
 
 **What about Tor?** Tor is a different free anti-censorship tool
 that's genuinely stronger for anonymity — it bounces every
@@ -203,18 +213,23 @@ and down through the day.
 
 ## What changed in the code
 
-Also in [`ir-only.patch`](ir-only.patch):
+The whole restriction is this one block, kept in
+[`ir-only.patch`](ir-only.patch) for reference and carried on the `ir-only`
+branch of the [tunnel-core fork](https://github.com/adpunt/psiphon-tunnel-core):
 
 ```go
 clientRegion := announceResponse.ClientRegion
 
+// IR-only allowlist (local fork). Reject non-IR matched clients with a
+// non-backoff error so the announce loop immediately re-announces and the
+// broker tries to match a different client.
 if clientRegion != "IR" {
     return false, errors.TraceNew("client region not allowed")
 }
 ```
 
 If someone outside Iran tries to connect, your computer turns them
-down and moves on to the next person. 
+down and moves on to the next person.
 
 ---
 
@@ -222,10 +237,19 @@ down and moves on to the next person.
 
 | File | Purpose |
 |---|---|
-| [`ir-only.patch`](ir-only.patch) | The change |
+| [`ir-only.patch`](ir-only.patch) | The change, shown in full — for reading. The actual builds use the fork (below), which already contains it. |
 | [`extract-config/`](extract-config/) | Source code of the config tool |
-| [`install.sh`](install.sh) | Script GitHub uses to automatically fetch the source from Psiphon and apply the Iran-only patch (you don't run it) |
+| [`install.sh`](install.sh) | Script GitHub uses to build the release binaries from the `conduit-ir` fork (you don't run it) |
 | [`NOTICE.md`](NOTICE.md), [`LICENSE`](LICENSE) | Credit to Psiphon + the open-source license |
+
+The IR-only restriction lives in two forks, each carrying the change on an
+`ir-only` branch:
+
+- [**adpunt/psiphon-tunnel-core**](https://github.com/adpunt/psiphon-tunnel-core) `@ir-only` — upstream Psiphon plus the 8-line change in `psiphon/common/inproxy/proxy.go`.
+- [**adpunt/conduit-ir**](https://github.com/adpunt/conduit-ir) `@ir-only` — the Conduit app, wired to build against the tunnel-core fork above.
+
+This repo (`conduit-ir-patch`) is just the distribution layer: it builds those
+forks into the ready-made binaries you download in Step 1.
 
 ---
 
@@ -236,28 +260,29 @@ ready-made version. ~30 minutes first time. Needs [Go 1.24](https://go.dev/dl/)
 (specifically 1.24, not 1.25+), Git, and `make`. If you don't know what
 those are, skip this whole section.
 
+The Iran-only restriction now lives in a fork, so there's no patch step:
+the [`conduit-ir`](https://github.com/adpunt/conduit-ir) fork builds against
+the [`psiphon-tunnel-core`](https://github.com/adpunt/psiphon-tunnel-core)
+fork, which is upstream Psiphon plus the one change shown above. Both keep
+that change on a branch called `ir-only`.
+
 ```bash
-git clone https://github.com/Psiphon-Inc/conduit.git ~/repos/conduit
-cd ~/repos/conduit/cli
-make setup
-
-# >>> APPLY THE IR-ONLY PATCH <<<
-cd psiphon-tunnel-core
-curl -fsSL https://raw.githubusercontent.com/adpunt/conduit-ir-patch/main/ir-only.patch | git apply
-
-cd ..
-cat >> go.mod <<'EOF'
-
-replace github.com/Psiphon-Labs/psiphon-tunnel-core => ./psiphon-tunnel-core
-EOF
-go mod tidy
+git clone -b ir-only https://github.com/adpunt/conduit-ir.git ~/repos/conduit-ir
+cd ~/repos/conduit-ir/cli
+make setup   # clones the patched tunnel-core fork
 make build
 ```
 
-Program appears at `~/repos/conduit/cli/dist/conduit` (just `conduit`,
+Program appears at `~/repos/conduit-ir/cli/dist/conduit` (just `conduit`,
 not `conduit-ir-*`). Windows: do this inside WSL2 (Windows' built-in Linux
 environment): run `wsl --install -d Ubuntu` from PowerShell as
 administrator, restart, then open Ubuntu from the Start menu.
+
+To confirm the restriction is really in your build:
+
+```bash
+strings dist/conduit | grep "client region not allowed"
+```
 
 ---
 
@@ -279,56 +304,78 @@ the settings file stays the same.
 
 ---
 
-## Going further: protect your users a little more
+## A few notes for operators
 
-Conduit already encrypts traffic between users and you. Two small extra
-steps make the people connecting through you meaningfully harder to
-profile.
+**You can't see what the people using your node are doing.** Your
+computer is a bridge, not an exit: their traffic is encrypted to a
+Psiphon server, and Psiphon's code only lets your node relay to Psiphon
+servers, never to arbitrary sites. That's good for you — but it also
+means several "protect your users" steps you might expect *don't apply*:
 
-### Don't run this on a work or school computer
+- **Encrypted DNS on your machine does nothing for them.** The Psiphon
+  server resolves the sites they visit, not you — so DoH/DoT on your
+  computer only affects your own browsing, not theirs.
+- **Corporate/endpoint monitoring on your machine won't see their
+  browsing** — only encrypted tunnel traffic going to Psiphon servers.
+- **A personal VPN neither helps nor harms them.** It only changes how
+  your own hop to Psiphon is routed; the VPN still sees only encrypted
+  tunnel bytes, not anyone's browsing.
 
-If your machine has corporate VPN or endpoint-security software
-installed (FortiClient, Cisco AnyConnect, CrowdStrike, SentinelOne,
-Zscaler, Netskope, etc.), that software inspects traffic leaving the
-machine — meaning relayed users' browsing would flow through your
-employer's or university's monitoring. Use a personal computer, an old
-laptop, or a Raspberry Pi instead.
+What *does* matter:
 
-Also: turn off any personal VPN (NordVPN, ExpressVPN, Mullvad, etc.)
-while Conduit is running. Otherwise your VPN provider becomes a single
-point that sees all the relayed traffic.
+- **Make sure a relay is allowed on your network.** Their browsing is
+  invisible to your employer or school, but running a relay service can
+  still break an acceptable-use policy, and some corporate networks
+  block or interfere with the traffic. A personal computer, an old
+  laptop, or a Raspberry Pi on your home connection sidesteps the
+  question.
+- **Keep it running.** Uptime is the thing that helps — leave it on as
+  much as you can, and restart it after a reboot. Demand from Iran
+  spikes during blackouts, often at odd hours.
+- **A wired connection is steadier** than Wi-Fi for sustained relaying,
+  if you can manage one.
 
-### Use an encrypted, no-logs DNS resolver
+---
 
-When someone visits a site through your relay, **your computer** does
-the DNS lookup. By default that lookup goes to your home ISP's resolver
-in cleartext, giving your ISP a list of hostnames relayed users are
-visiting. Encrypted DNS (DoH / DoT) hides that list.
+## Other ways to help Iran connect
 
-**Mac (recommended):** install a signed configuration profile from the
-community-maintained [paulmillr/encrypted-dns](https://github.com/paulmillr/encrypted-dns)
-repo — direct download, no extra app, system-wide.
+Running this build is one option, not the only one. The goal is simply
+to get people in Iran back online by whatever means actually works and
+keeps them safe — and what counts as "safe enough" depends on each
+person's situation inside Iran. This section just lays out options. It's
+up to you, and to the people you're helping, to decide which (if any)
+fit, or whether to help at all.
 
-Pick a provider (both are independently audited no-logs resolvers):
-- Cloudflare: [cloudflare-default-https.mobileconfig](https://raw.githubusercontent.com/paulmillr/encrypted-dns/master/signed/cloudflare-default-https.mobileconfig)
-- Quad9: [quad9-default-https.mobileconfig](https://raw.githubusercontent.com/paulmillr/encrypted-dns/master/signed/quad9-default-https.mobileconfig)
+### Other ways to do IR-only filtering
 
-Download in **Safari**, then open **System Settings → General → VPN &
-Device Management** (or **Profiles** on older macOS), double-click the
-downloaded profile, click **Install**, enter your password.
+This project filters by changing Conduit's code (the fork above). Others do
+the same thing at the network layer instead, which works with the **official**
+Conduit and needs no custom build:
 
-**Linux:** edit `/etc/systemd/resolved.conf`, set `DNS=9.9.9.9` and
-`DNSOverTLS=yes`, then `sudo systemctl restart systemd-resolved`. Full
-docs at [docs.quad9.net](https://docs.quad9.net/).
+- **Firewall / geo-IP filtering** — tools like
+  [iran-conduit-firewall](https://github.com/ardavannafezi/iran-conduit-firewall-Linux)
+  use `iptables` + `ipset` with downloaded Iran IP ranges so that only
+  Iranian IPs can reach the proxy port. Linux-only, runs alongside the
+  stock Conduit. (As always: read the scripts before running anything
+  with `sudo`.)
+- **Community fork** — [ssmirr/conduit](https://github.com/ssmirr/conduit)
+  is an actively maintained community fork of the official app with
+  extra packaging and platform support.
 
-**Windows:** Settings → Network & Internet → (your connection) →
-Hardware properties → DNS server assignment → Edit → Manual → IPv4 on.
-Set Preferred to `1.1.1.1` and Alternate to `1.0.0.1`. Under *DNS over
-HTTPS*, choose **On (automatic)**.
+### Amnezia VPN (a self-hosted alternative)
 
-**Verify it worked:** visit [on.quad9.net](https://on.quad9.net/) (if
-you chose Quad9) or [1.1.1.1/help](https://1.1.1.1/help) (if you chose
-Cloudflare). Both should confirm encrypted DNS is active.
+[Amnezia VPN](https://amnezia.org/) is a free, open-source VPN in a
+similar spirit to Conduit: you run it yourself and share access with
+people who need it. Its **AmneziaWG** protocol is built to survive the
+deep-packet-inspection (DPI) filtering used in heavily censored
+countries, and the
+[AmneziaWG 2.0 release (2026)](https://amnezia.org/blog/amneziawg-2-0-available-for-self-hosted)
+goes further — disguising VPN traffic as ordinary DNS, QUIC, or SIP so
+filters wave it through. It's reported to work well in Iran, China, and
+Russia. Unlike Conduit, it runs on a server (often a cheap VPS) rather
+than just your home computer. Coverage:
+[TechRadar](https://www.techradar.com/vpn/vpn-services/amnezia-vpn-drops-new-amneziawg-2-0-protocol-as-censorship-tactics-grow-smarter),
+[CNET](https://www.cnet.com/tech/services-and-software/amnezia-vpn-new-protocol-amneziawg-v2/).
 
 ---
 
@@ -347,7 +394,8 @@ censored country) or the regular [Psiphon app](https://psiphon.ca/) (if
 Conduit and the networking code underneath it (called
 `psiphon-tunnel-core`) are entirely **Psiphon Inc.**'s work, released
 under an open-source license ([GPL-3.0](LICENSE)). This project just
-adds a 4-line change on top.
+adds a tiny change on top (one `if` check, plus an explanatory
+comment).
 
 If you find it useful, also run the
 [official Conduit](https://github.com/Psiphon-Inc/conduit) on a second

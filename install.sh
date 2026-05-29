@@ -10,10 +10,15 @@
 #
 # This script:
 #   1. Installs Go 1.24, git, and a C compiler if missing.
-#   2. Clones https://github.com/Psiphon-Inc/conduit into ~/repos/conduit.
-#   3. Runs Psiphon's "make setup" to pull tunnel-core.
-#   4. Applies the IR-only patch.
-#   5. Builds the binary.
+#   2. Clones the conduit-ir fork (ir-only branch) into ~/repos/conduit-ir.
+#   3. Runs "make setup", which pulls the patched tunnel-core fork.
+#   4. Builds the binary and confirms the IR-only restriction is in it.
+#
+# The IR-only restriction lives in the fork, not in this script: the
+# ir-only branch of github.com/adpunt/conduit-ir builds against the
+# ir-only branch of github.com/adpunt/psiphon-tunnel-core, which is
+# upstream Psiphon plus one 8-line change (see ir-only.patch). There is
+# no separate patch step anymore.
 #
 # It does NOT install a Psiphon config file. You still have to obtain one.
 # It does NOT start the proxy. The script prints instructions when it's done.
@@ -22,9 +27,10 @@
 
 set -euo pipefail
 
-PATCH_URL="https://raw.githubusercontent.com/adpunt/conduit-ir-patch/main/ir-only.patch"
+CONDUIT_REPO="https://github.com/adpunt/conduit-ir.git"
+CONDUIT_BRANCH="ir-only"
 REPOS_DIR="${HOME}/repos"
-CONDUIT_DIR="${REPOS_DIR}/conduit"
+CONDUIT_DIR="${REPOS_DIR}/conduit-ir"
 
 bold()  { printf "\033[1m%s\033[0m\n" "$*"; }
 say()   { printf "  %s\n" "$*"; }
@@ -48,7 +54,7 @@ bold "Detected: ${OS} / ${ARCH}"
 echo
 
 # ----- 1. Install tools -----
-bold "Step 1/5: Checking tools..."
+bold "Step 1/4: Checking tools..."
 
 install_go_124_linux() {
   local url="https://go.dev/dl/go1.24.13.linux-${ARCH}.tar.gz"
@@ -113,62 +119,54 @@ else  # linux / wsl2
 fi
 echo
 
-# ----- 2. Clone Conduit -----
-bold "Step 2/5: Cloning Psiphon Conduit..."
+# ----- 2. Clone the conduit-ir fork (ir-only branch) -----
+bold "Step 2/4: Cloning the conduit-ir fork (ir-only branch)..."
 mkdir -p "$REPOS_DIR"
 if [ -d "$CONDUIT_DIR/.git" ]; then
-  ok "Conduit already cloned at $CONDUIT_DIR"
+  say "Already cloned — making sure it's on the ir-only branch and up to date..."
+  cd "$CONDUIT_DIR"
+  git fetch --quiet origin "$CONDUIT_BRANCH"
+  git checkout --quiet -B "$CONDUIT_BRANCH" "origin/$CONDUIT_BRANCH"
+  ok "conduit-ir ready at $CONDUIT_DIR ($CONDUIT_BRANCH)"
 else
-  git clone --quiet https://github.com/Psiphon-Inc/conduit.git "$CONDUIT_DIR"
-  ok "Cloned to $CONDUIT_DIR"
+  git clone --quiet --branch "$CONDUIT_BRANCH" "$CONDUIT_REPO" "$CONDUIT_DIR"
+  ok "Cloned $CONDUIT_BRANCH to $CONDUIT_DIR"
 fi
 echo
 
-# ----- 3. make setup (pulls tunnel-core) -----
-bold "Step 3/5: Pulling psiphon-tunnel-core (this can take a few minutes)..."
+# ----- 3. make setup (pulls the patched tunnel-core fork) -----
+bold "Step 3/4: Pulling the patched tunnel-core fork (this can take a few minutes)..."
 cd "$CONDUIT_DIR/cli"
-if [ -d psiphon-tunnel-core/.git ]; then
-  ok "tunnel-core already present"
-else
-  make setup
-  ok "tunnel-core ready"
-fi
+# 'make setup' clones adpunt/psiphon-tunnel-core@ir-only (set in the Makefile)
+# into ./psiphon-tunnel-core and runs 'go mod tidy'. Re-running refreshes it.
+make setup
+ok "tunnel-core (ir-only) ready"
 echo
 
-# ----- 4. Apply patch -----
-bold "Step 4/5: Applying IR-only patch..."
-cd "$CONDUIT_DIR/cli/psiphon-tunnel-core"
-if grep -q "IR-only allowlist" psiphon/common/inproxy/proxy.go; then
-  ok "Patch is already applied"
-else
-  curl -fsSL "$PATCH_URL" | git apply
-  ok "Patch applied to psiphon/common/inproxy/proxy.go"
-fi
-
-# Add replace directive to go.mod if not already there
+# ----- 4. Build + verify the restriction is really in it -----
+bold "Step 4/4: Building (this can take a minute or two)..."
 cd "$CONDUIT_DIR/cli"
-if grep -q "replace github.com/Psiphon-Labs/psiphon-tunnel-core =>" go.mod; then
-  ok "go.mod already points at local tunnel-core"
-else
-  cat >> go.mod <<'EOF'
-
-// Local fork: IR-only client allowlist patch in psiphon/common/inproxy/proxy.go
-replace github.com/Psiphon-Labs/psiphon-tunnel-core => ./psiphon-tunnel-core
-EOF
-  ok "Added replace directive to go.mod"
-fi
-echo
-
-# ----- 5. Build -----
-bold "Step 5/5: Building (this can take a minute or two)..."
-cd "$CONDUIT_DIR/cli"
-go mod tidy >/dev/null 2>&1
 make build >/dev/null
 BIN="$CONDUIT_DIR/cli/dist/conduit"
 if [ ! -x "$BIN" ]; then
   fail "Build appeared to succeed but no binary at $BIN — please report this."
 fi
-ok "Built: $BIN"
+
+# Safety check: confirm the IR-only restriction is actually compiled in.
+# This is a censorship-circumvention tool for people in Iran; a build that
+# silently lost the restriction would serve the whole world, so fail loudly.
+PROXY="$CONDUIT_DIR/cli/psiphon-tunnel-core/psiphon/common/inproxy/proxy.go"
+if ! grep -q "IR-only allowlist" "$PROXY"; then
+  fail "IR-only restriction NOT found in tunnel-core source. Refusing to trust this build. Please report this."
+fi
+# Use grep -c (not grep -q): grep -q exits on the first match and closes the
+# pipe, which makes `strings` die with SIGPIPE and trips `set -o pipefail`,
+# producing a false negative. grep -c reads the whole stream.
+marker_count="$(strings "$BIN" 2>/dev/null | grep -c "client region not allowed" || true)"
+if [ "${marker_count:-0}" -lt 1 ]; then
+  warn "Could not confirm the IR-only marker inside the binary (strings unavailable?). Source check passed, but double-check before relying on it."
+fi
+ok "Built: $BIN  (IR-only restriction confirmed)"
 echo
 
 # ----- Done -----
