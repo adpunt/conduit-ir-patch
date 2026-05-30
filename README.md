@@ -9,71 +9,66 @@ that relays internet traffic **only for people in Iran**.
 
 ## What is Conduit
 
-Conduit lets people in regions with internet censorship reach the
-open internet through your device. It works like Tor's Snowflake: your
-computer is a **bridge, not an exit**. Someone in Iran makes an
-encrypted connection to your machine, and your machine relays that
-still-encrypted traffic onward to a **Psiphon server**, which is what
-actually connects out to the wider internet on their behalf. So the
-websites they visit see the Psiphon server's IP, **not yours** — and
-your computer never sees what they're doing inside the tunnel.
-Psiphon's own code enforces this: your node can only relay to Psiphon
-servers, never to arbitrary sites. Your home internet provider just
-sees encrypted traffic between you and the people you help, and
-between you and Psiphon's servers — never the contents.
+Conduit lets people in regions with internet censorship reach the open
+internet through your device. You host a Conduit station; people in Iran
+connect to it with Psiphon. It works like Tor's Snowflake: your computer
+is a **bridge, not an exit**. Their requests travel encrypted to your
+machine, which relays that still-encrypted traffic onward to a **Psiphon
+server** — and the Psiphon server is what actually connects out to the
+wider internet on their behalf. So the blocked websites they visit see the
+**Psiphon server's IP, not yours**, and your computer never sees what
+they're doing inside the tunnel. Psiphon's code enforces this: your node
+can only relay to Psiphon servers, never to arbitrary sites. Your home
+internet provider just sees encrypted traffic between you and the people
+you help (and between you and Psiphon's servers) — never the contents.
 
-**The scale.** During the January 2026 blackout, [Iran International
+During the January 2026 blackout, [Iran International
 reported](https://www.iranintl.com/en/202601240957) more than 40,000
 Iranians connected through Conduit volunteers at once; on January 22,
-more than half of Psiphon Conduit's 2.8 million connection attempts
-came from inside Iran. Iran has more Psiphon users than any country in
-the world. A volunteer running the standard Conduit phone app serves
-only around 25 people; this command-line build runs on a real
-computer, so you can raise that number well past what a phone can
-handle (50 is a comfortable starting point — see Step 3).
+more than half of Psiphon Conduit's 2.8 million connection attempts came
+from inside Iran. Iran has more Psiphon users than any country in the
+world. A volunteer running the standard Conduit phone app serves only
+around 25 people at a time; command-line builds — the official one as
+well as this one — let you raise that on a machine that can handle it
+(50 is a comfortable starting point — see Step 3).
 
-**What it's good for.** Conduit is built for getting through
-censorship, and it's good at that job. It reliably unblocks the
-everyday internet for Iranians — news, WhatsApp/Telegram/Signal,
-social media, video calls with family, journals, banking — in places
-where commercial VPNs are blocked, because Psiphon disguises its
-traffic to look like ordinary browsing. For most Iranians most of
-the time, "I can reach the open internet at all" is the thing that
-matters, and that's what Conduit delivers.
+Conduit is built for getting through censorship, and it's good at that
+job. It reliably unblocks the everyday internet for Iranians (news,
+WhatsApp/Telegram/Signal, social media, video calls with family,
+journals, banking) in places where commercial VPNs are blocked, because
+Psiphon disguises its traffic to look like ordinary browsing, using
+volunteers' residential IP addresses. This provides Iranians with free,
+open internet.
 
-Where it falls short: Psiphon doesn't claim to be a privacy or
-anonymity tool. Independent reviewers ([ProPrivacy](https://proprivacy.com/privacy-service/review/psiphon))
-say it plainly: *"Psiphon does not increase your online privacy, and
-should not be considered or used as an online security tool."*
-Psiphon's own [privacy bulletins](https://psiphon.ca/en/privacy-bulletin.html)
-note that its servers collect aggregated connection metadata
-(timestamps, region/city codes, protocol type, bytes transferred) —
-not the websites visited, but a footprint of each connection.
-Independent security audits by Cure53 ([2017](https://cure53.de/pentest-report_psiphon.pdf),
+There are some downsides, most importantly that Psiphon doesn't claim to
+be a privacy or anonymity tool. Independent reviewers ([ProPrivacy](https://proprivacy.com/privacy-service/review/psiphon))
+explain: *"Psiphon does not increase your online privacy, and should not
+be considered or used as an online security tool."* Psiphon's own
+[privacy bulletins](https://psiphon.ca/en/privacy-bulletin.html) note
+that its servers collect aggregated connection metadata (timestamps,
+region/city codes, protocol type, bytes transferred) — not the websites
+visited, but a footprint of each connection. Independent security audits
+by Cure53 ([2017](https://cure53.de/pentest-report_psiphon.pdf),
 [2019](https://cure53.de/pentest-report_psiphon_2.pdf), and
 [2024 tunnel-core](https://cure53.de/pentest-report_psiphon_4.pdf))
 found no catastrophic flaws, with a separate
 [audit of the Conduit library itself](https://cure53.de/pentest-report_psiphon-conduit-library_2.pdf).
 And because their traffic rides a single Psiphon tunnel — exiting at a
-Psiphon server rather than bouncing through multiple anonymous hops
-the way Tor does — a determined state-level adversary watching both
-ends could in principle correlate them. As the operator you can see
-the volume and timing of the encrypted traffic crossing your machine,
-but not its content; Psiphon's design keeps the relayed tunnel opaque
-to you.
+Psiphon server rather than bouncing through multiple anonymous hops the
+way Tor does — a determined state-level adversary watching both ends
+could in principle correlate them. As the operator you can see the
+volume and timing of the encrypted traffic crossing your machine, but
+not its content; Psiphon's design keeps the relayed tunnel opaque to you.
 
-**What about Tor?** Tor is a different free anti-censorship tool
-that's genuinely stronger for anonymity — it bounces every
-connection through multiple servers run by strangers, so no single
-hop knows both who you are and what you're doing. The catch is that
-Iran has spent years making Tor impractical: the Tor Project's
+Tor, another tool, is the gold standard for internet anonymity. It
+bounces every connection through multiple servers run by strangers, so
+no single hop knows both who you are and what you're doing. The catch is
+that Iran has spent years making Tor impractical: the Tor Project's
 [2025 censorship report](https://blog.torproject.org/staying-ahead-of-censors-2025/)
-describes Tor's main entry method (obfs4 bridges) being blocked in
-bulk, leaving Snowflake — slow and unstable — as the only widely
-working transport. During the June 2025 Iran–Israel conflict and
-again in January 2026, Iran cut external internet entirely for days.
-Psiphon's protocol mimicry tends to keep working through those
-events when Tor doesn't.
+describes Tor's main entry method (obfs4 bridges) being blocked in bulk,
+leaving Snowflake — slow and unstable — as the only widely working
+transport. Additionally, Psiphon's protocol mimicry tends to keep
+working through harsher internet conditions when Tor doesn't.
 
 Compared to a **paid VPN** (NordVPN, Mullvad, ExpressVPN, etc.), the
 shape is similar: encrypted tunnel, the user's ISP can't see the
@@ -82,12 +77,11 @@ working where commercial VPNs are blocked. The trade-off is that it
 runs on volunteer home computers, so speeds vary.
 
 **If you're recommending this to family/friends:** it's a solid free
-option for everyday access to blocked sites where nothing else
-reliably works. For threat models where anonymity matters more than
-reachability (whistleblowing, organising, anything that could get
-someone arrested), a high-trust paid VPN or Tor over a working
-transport is still the better answer — caveat that both can be hard
-to come by inside Iran. Tell users not to log into identifying
+option for everyday access to blocked sites. For situations where
+anonymity matters more than reachability (organising, or anything that
+could get someone arrested), a high-trust paid VPN or Tor over a working
+transport is still the better answer, with the caveat that both can be
+hard to come by inside Iran. Tell users not to log into identifying
 accounts they wouldn't want associated with their connection.
 
 ---
@@ -335,6 +329,20 @@ What *does* matter:
 - **A wired connection is steadier** than Wi-Fi for sustained relaying,
   if you can manage one.
 
+### Should I route my relay through Tor for extra anonymity?
+
+**No.** It's a natural instinct, but it doesn't help the people using
+you and creates new problems. Because your node is a bridge, not an exit
+(above), the real exit is the Psiphon server — so sending your node's
+traffic out through Tor changes *your* path to Psiphon, not the users'
+anonymity. It also tends to make things *worse*: Tor exit IPs get
+CAPTCHA-walled and blocked by many sites (degrading the access you're
+trying to provide), it loads scarce Tor exit capacity with relay
+traffic, and Tor itself is heavily blocked inside Iran. The Tor Project
+and Whonix both warn against this "proxy-over-Tor" pattern. If someone
+needs Tor's anonymity, they should use Tor directly, not through a
+Conduit relay.
+
 ---
 
 ## Other ways to help Iran connect
@@ -376,16 +384,6 @@ Russia. Unlike Conduit, it runs on a server (often a cheap VPS) rather
 than just your home computer. Coverage:
 [TechRadar](https://www.techradar.com/vpn/vpn-services/amnezia-vpn-drops-new-amneziawg-2-0-protocol-as-censorship-tactics-grow-smarter),
 [CNET](https://www.cnet.com/tech/services-and-software/amnezia-vpn-new-protocol-amneziawg-v2/).
-
----
-
-## Should I do this?
-
-Yes, if you have a computer with reliable internet that's on most of
-the day and you want to help Iran specifically. Otherwise:
-[official Conduit](https://github.com/Psiphon-Inc/conduit) (any
-censored country) or the regular [Psiphon app](https://psiphon.ca/) (if
-*you* want to bypass censorship).
 
 ---
 
