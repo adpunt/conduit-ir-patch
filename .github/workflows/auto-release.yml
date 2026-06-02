@@ -1,0 +1,115 @@
+name: Auto-update release
+
+# Rebuilds and publishes a new IR-only release whenever Psiphon ships a new
+# Conduit. Runs weekly (and on demand). It builds the same way release.yml does
+# — official Conduit app + the adpunt/psiphon-tunnel-core fork (ir-only branch)
+# — just kicked off automatically instead of by a tag you push.
+#
+# LIMITATION (read this): it stays automatic only while the ~8-line patch in the
+# fork still applies to Psiphon's current tunnel-core. When Psiphon changes that
+# part of proxy.go enough that the fork is out of date, the build here fails and
+# NO release is published — you then rebase the fork's ir-only branch onto the
+# newer tunnel-core once, and it's automatic again. The IR-only restriction is
+# verified inside the binary on every run (install.sh fails if it's missing), so
+# a build that somehow lost the restriction can never publish.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"        # Mondays 08:00 UTC
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Release even if Conduit hasn't changed since the last build"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write              # needed to create the release + tag
+
+jobs:
+  auto-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Is there a newer official Conduit release?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # newest CLI release specifically (ignore mobile/desktop releases)
+          UPSTREAM=$(gh api repos/Psiphon-Inc/conduit/releases --jq '[.[] | select(.tag_name | startswith("release-cli-"))][0].tag_name')
+          # Which Conduit version did our own last release build against?
+          # (we record it in the release notes, and read it back here)
+          LASTBUILT=$(gh api repos/${{ github.repository }}/releases/latest --jq .body 2>/dev/null \
+                      | sed -n 's/.*built against Psiphon Conduit `\([^`]*\)`.*/\1/p' | head -1)
+          echo "Upstream Conduit: ${UPSTREAM:-none} | we last built against: ${LASTBUILT:-none}"
+          echo "upstream=$UPSTREAM" >> "$GITHUB_OUTPUT"
+          if [ "${{ inputs.force }}" = "true" ] || [ "$UPSTREAM" != "$LASTBUILT" ]; then
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=no" >> "$GITHUB_OUTPUT"
+            echo "Already built against $UPSTREAM — nothing to do."
+          fi
+
+      - name: Set up Go 1.24
+        if: steps.check.outputs.go == 'yes'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+
+      - name: Build IR-only Conduit (official Conduit + the ir-only fork)
+        if: steps.check.outputs.go == 'yes'
+        run: |
+          # install.sh clones official Conduit, wires in the fork, builds, and
+          # FAILS if the IR-only restriction isn't in the resulting binary.
+          bash ./install.sh
+          cd ~/repos/conduit-ir-build/cli
+          make build-all
+
+      - name: Build extract-config + stage binaries
+        if: steps.check.outputs.go == 'yes'
+        run: |
+          cd "$GITHUB_WORKSPACE/extract-config"
+          mkdir -p "$GITHUB_WORKSPACE/release"
+          for plat in "darwin amd64" "darwin arm64" "linux amd64" "linux arm64" "windows amd64"; do
+            set -- $plat; os=$1; arch=$2; ext=""
+            [ "$os" = "windows" ] && ext=".exe"
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -ldflags="-s -w" \
+              -o "$GITHUB_WORKSPACE/release/extract-config-${os}-${arch}${ext}" .
+          done
+          cd ~/repos/conduit-ir-build/cli/dist
+          for f in conduit-linux-amd64 conduit-linux-arm64 \
+                   conduit-darwin-amd64 conduit-darwin-arm64 \
+                   conduit-windows-amd64.exe; do
+            [ -f "$f" ] && cp "$f" "$GITHUB_WORKSPACE/release/conduit-ir-${f#conduit-}"
+          done
+          ls -la "$GITHUB_WORKSPACE/release/"
+
+      - name: Compute next version
+        if: steps.check.outputs.go == 'yes'
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LATEST=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name 2>/dev/null || echo "v0.1.0")
+          V=${LATEST#v}; MAJOR=${V%%.*}; REST=${V#*.}; MINOR=${REST%%.*}; PATCH=${REST##*.}
+          NEXT="v${MAJOR}.${MINOR}.$((PATCH+1))"
+          echo "tag=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "Next release: $NEXT"
+
+      - name: Publish release
+        if: steps.check.outputs.go == 'yes'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          files: release/*
+          body: |
+            ## Conduit IR-only — auto-built
+
+            Rebuilt automatically against the latest Psiphon Conduit.
+
+            This release was built against Psiphon Conduit `${{ steps.check.outputs.upstream }}`.
+
+            Unofficial build of [Psiphon Conduit](https://github.com/Psiphon-Inc/conduit) that relays only for clients in Iran. **Not affiliated with Psiphon Inc.** GPL-3.0. See https://github.com/adpunt/conduit-ir-patch

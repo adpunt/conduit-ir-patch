@@ -28,20 +28,20 @@ jobs:
 
       - name: Verify IR-only binary exists and runs
         run: |
-          BIN="$HOME/repos/conduit-ir/cli/dist/conduit"
+          BIN="$HOME/repos/conduit-ir-build/cli/dist/conduit"
           test -x "$BIN" || { echo "Binary missing"; exit 1; }
           "$BIN" --version
           "$BIN" --help | head -5
 
       - name: Verify IR-only restriction is in source
         run: |
-          PROXY="$HOME/repos/conduit-ir/cli/psiphon-tunnel-core/psiphon/common/inproxy/proxy.go"
+          PROXY="$HOME/repos/conduit-ir-build/cli/psiphon-tunnel-core/psiphon/common/inproxy/proxy.go"
           grep -q "IR-only allowlist" "$PROXY" || { echo "Restriction not in source"; exit 1; }
           echo "IR-only restriction confirmed in proxy.go"
 
       - name: Verify restriction is compiled into the binary
         run: |
-          BIN="$HOME/repos/conduit-ir/cli/dist/conduit"
+          BIN="$HOME/repos/conduit-ir-build/cli/dist/conduit"
           # grep -c (not -q): GitHub Actions runs bash with pipefail, and
           # `strings | grep -q` makes strings die with SIGPIPE on first match,
           # falsely failing the step. grep -c reads the whole stream.
@@ -51,7 +51,7 @@ jobs:
 
       - name: Verify the fork's go.mod replace is in place
         run: |
-          MOD="$HOME/repos/conduit-ir/cli/go.mod"
+          MOD="$HOME/repos/conduit-ir-build/cli/go.mod"
           grep -q "replace github.com/Psiphon-Labs/psiphon-tunnel-core =>" "$MOD" || \
             { echo "replace directive missing"; exit 1; }
           echo "replace directive confirmed in go.mod"

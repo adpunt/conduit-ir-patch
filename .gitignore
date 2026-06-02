@@ -6,3 +6,14 @@ conduit_key.json
 
 # macOS junk
 .DS_Store
+
+# Private research notes — local reference only, never publish
+conduit-iran-notes.md
+
+# End-user protocol drafts — unverified life-safety advice, never publish
+# until each claim is checked. Drafts only.
+protocols/draft/
+
+# Internal working docs — plan + fact-check output, local reference only
+REWORK-PLAN.md
+factcheck-ledger.md

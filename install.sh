@@ -10,15 +10,16 @@
 #
 # This script:
 #   1. Installs Go 1.24, git, and a C compiler if missing.
-#   2. Clones the conduit-ir fork (ir-only branch) into ~/repos/conduit-ir.
-#   3. Runs "make setup", which pulls the patched tunnel-core fork.
-#   4. Builds the binary and confirms the IR-only restriction is in it.
+#   2. Clones the official Psiphon Conduit app.
+#   3. Points its build at the IR-only fork of psiphon-tunnel-core and builds it.
+#   4. Confirms the IR-only restriction is in the binary.
 #
-# The IR-only restriction lives in the fork, not in this script: the
-# ir-only branch of github.com/adpunt/conduit-ir builds against the
-# ir-only branch of github.com/adpunt/psiphon-tunnel-core, which is
-# upstream Psiphon plus one 8-line change (see ir-only.patch). There is
-# no separate patch step anymore.
+# The only change from stock Conduit lives in one fork:
+# github.com/adpunt/psiphon-tunnel-core (branch ir-only) is upstream Psiphon
+# plus a single ~8-line change in psiphon/common/inproxy/proxy.go (see
+# ir-only.patch). This script clones the official Conduit app and wires its
+# build to use that fork in place of Psiphon's upstream tunnel-core — so the
+# binary is the official Conduit with the one IR-only change folded in.
 #
 # It does NOT install a Psiphon config file. You still have to obtain one.
 # It does NOT start the proxy. The script prints instructions when it's done.
@@ -27,10 +28,13 @@
 
 set -euo pipefail
 
-CONDUIT_REPO="https://github.com/adpunt/conduit-ir.git"
-CONDUIT_BRANCH="ir-only"
+# Official Psiphon Conduit app (unmodified) + the IR-only tunnel-core fork.
+CONDUIT_REPO="https://github.com/Psiphon-Inc/conduit.git"
+CONDUIT_BRANCH="main"
+TC_REPO="https://github.com/adpunt/psiphon-tunnel-core.git"
+TC_BRANCH="ir-only"
 REPOS_DIR="${HOME}/repos"
-CONDUIT_DIR="${REPOS_DIR}/conduit-ir"
+CONDUIT_DIR="${REPOS_DIR}/conduit-ir-build"
 
 bold()  { printf "\033[1m%s\033[0m\n" "$*"; }
 say()   { printf "  %s\n" "$*"; }
@@ -119,28 +123,35 @@ else  # linux / wsl2
 fi
 echo
 
-# ----- 2. Clone the conduit-ir fork (ir-only branch) -----
-bold "Step 2/4: Cloning the conduit-ir fork (ir-only branch)..."
+# ----- 2. Clone the official Conduit app -----
+bold "Step 2/4: Cloning the official Psiphon Conduit app..."
 mkdir -p "$REPOS_DIR"
 if [ -d "$CONDUIT_DIR/.git" ]; then
-  say "Already cloned — making sure it's on the ir-only branch and up to date..."
+  say "Already cloned — updating to the latest official Conduit..."
   cd "$CONDUIT_DIR"
   git fetch --quiet origin "$CONDUIT_BRANCH"
   git checkout --quiet -B "$CONDUIT_BRANCH" "origin/$CONDUIT_BRANCH"
-  ok "conduit-ir ready at $CONDUIT_DIR ($CONDUIT_BRANCH)"
+  ok "Conduit ready at $CONDUIT_DIR ($CONDUIT_BRANCH)"
 else
   git clone --quiet --branch "$CONDUIT_BRANCH" "$CONDUIT_REPO" "$CONDUIT_DIR"
-  ok "Cloned $CONDUIT_BRANCH to $CONDUIT_DIR"
+  ok "Cloned official Conduit to $CONDUIT_DIR"
 fi
 echo
 
-# ----- 3. make setup (pulls the patched tunnel-core fork) -----
-bold "Step 3/4: Pulling the patched tunnel-core fork (this can take a few minutes)..."
+# ----- 3. Wire the build to the IR-only tunnel-core fork -----
+bold "Step 3/4: Wiring in the IR-only tunnel-core fork (this can take a few minutes)..."
 cd "$CONDUIT_DIR/cli"
-# 'make setup' clones adpunt/psiphon-tunnel-core@ir-only (set in the Makefile)
-# into ./psiphon-tunnel-core and runs 'go mod tidy'. Re-running refreshes it.
-make setup
-ok "tunnel-core (ir-only) ready"
+# Conduit's Makefile lets us override which tunnel-core repo/branch 'make setup'
+# clones into ./psiphon-tunnel-core. Point it at the IR-only fork instead of
+# Psiphon's upstream staging-client.
+make setup PSIPHON_REPO="$TC_REPO" PSIPHON_BRANCH="$TC_BRANCH"
+# Stock Conduit only uses the local clone for its pion sub-dependencies and
+# still builds the tunnel-core module itself from Psiphon's pinned upstream
+# version. This one line redirects the tunnel-core module to the local fork —
+# it's what actually folds the IR-only change into the build.
+go mod edit -replace github.com/Psiphon-Labs/psiphon-tunnel-core=./psiphon-tunnel-core
+go mod tidy
+ok "tunnel-core (ir-only fork) wired in"
 echo
 
 # ----- 4. Build + verify the restriction is really in it -----
@@ -159,12 +170,21 @@ PROXY="$CONDUIT_DIR/cli/psiphon-tunnel-core/psiphon/common/inproxy/proxy.go"
 if ! grep -q "IR-only allowlist" "$PROXY"; then
   fail "IR-only restriction NOT found in tunnel-core source. Refusing to trust this build. Please report this."
 fi
-# Use grep -c (not grep -q): grep -q exits on the first match and closes the
-# pipe, which makes `strings` die with SIGPIPE and trips `set -o pipefail`,
-# producing a false negative. grep -c reads the whole stream.
-marker_count="$(strings "$BIN" 2>/dev/null | grep -c "client region not allowed" || true)"
-if [ "${marker_count:-0}" -lt 1 ]; then
-  warn "Could not confirm the IR-only marker inside the binary (strings unavailable?). Source check passed, but double-check before relying on it."
+if command -v strings >/dev/null 2>&1; then
+  # Use grep -c (not grep -q): grep -q exits on the first match and closes the
+  # pipe, which makes `strings` die with SIGPIPE and trips `set -o pipefail`,
+  # producing a false negative. grep -c reads the whole stream.
+  marker_count="$(strings "$BIN" 2>/dev/null | grep -c "client region not allowed" || true)"
+  if [ "${marker_count:-0}" -lt 1 ]; then
+    # strings worked but the marker is absent: the restriction did not make it
+    # into the binary. Fail loudly — a build that silently lost the restriction
+    # would serve the whole world, not just Iran.
+    fail "IR-only marker NOT found in the compiled binary, even though the source check passed. Refusing to trust this build. Please report this."
+  fi
+else
+  # Only reachable when `strings` itself is missing — then we genuinely can't
+  # check the binary, so warn rather than fail (the source check already passed).
+  warn "'strings' is not installed, so the binary-level IR-only check was skipped. The source check passed; double-check before relying on it."
 fi
 ok "Built: $BIN  (IR-only restriction confirmed)"
 echo
