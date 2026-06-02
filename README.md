@@ -255,7 +255,7 @@ the settings file stays the same.
 
 ---
 
-## Additional information on Conduit
+## Additional technical information on Conduit
 
 You cannot see what people using your node are doing, nor can you add 
 any additional protections on your machine to help them. Your
@@ -274,7 +274,7 @@ own privacy do not apply to their internet activity, such as:
 
 What could matter on your end:
 
-- **Running it on a device and network that are actually yours.** Their
+- **Running it on a device and network that are actually yours** - their
   browsing is invisible to your employer or school, but running a relay
   service can still break an acceptable-use policy, and some networks
   block or interfere with the traffic. Watch out for anything an
@@ -283,12 +283,12 @@ What could matter on your end:
   or a rented cloud/VPS box with its own terms of service. A personal
   computer, an old laptop, or a Raspberry Pi on your home connection
   sidesteps the whole question.
-- **Keep it running.** Uptime is the thing that helps, leave it on as
+- **Keep it running** - uptime is the thing that helps, leave it on as
   much as you can, and restart it after a reboot. Demand from Iran spikes
   during crackdowns and in the windows when a shutdown eases (often at odd
   hours), so being already up when one of those windows opens is what
   matters. Additionally, the more users the have the more difficult monitoring
-  beocmes.
+  becomes.
 
 ### Tor and Conduit
 
@@ -338,7 +338,7 @@ And regardless of the content, nothing should be logged into accounts that ident
 
 ---
 
-## Background on Conduit
+## Background on Conduit and Iran 
 
 During and after the January 2026 internet blackout, [Iran International
 reported](https://www.iranintl.com/en/202601240957) that on January 22,
@@ -348,11 +348,12 @@ time of writing (late January), that more than 40,000 Iranians were
 connected through Conduit volunteers at once. Iran is consistently one of the
 largest sources of Psiphon users in the world. 
 
-There are a few complaints with Conduit. First, only a small amount of people are 
-typically able to connect. Conduits desktop and mobile apps have a UI element that 
-caps the max number of peers at 25. Command-line builds like this one have no such limit. 
-I personally run mine at 100. Second, despite the high number of Iranian users, their
-speed is quite low, and a lot of the traffic goes to users in other regions. While
+There are two major complaints users have with Conduit. First, only a small amount of peer are 
+successfully able to connect out of the many who try. Conduits desktop and mobile apps have a UI element that 
+caps the max number of peers at 25. Of these peers, only a small handful are typically able to connect for a substantial
+amount of time. Command-line builds like this one have no such limit. 
+I personally run mine with a max number of peer connections set to 100. The second complaint is that 
+despite the high number of Iranian users (whose speed is quite limited), a lot of the traffic goes to users in other regions. While
 there is certainly a case to be made that all these users deserve free Internet (as is provided
 by the original Conduit), given the current situation in Iran many people have expressed 
 interest in helping only Iranians. 
@@ -363,7 +364,6 @@ Conduit ([conduit#137](https://github.com/Psiphon-Inc/conduit/issues/137),
 and instead briefly set its whole network to serve only Iran during the January
 2026 crisis. That is no longer in effect, so a normal relay again serves every
 country. 
-
 
 Conduit is built for getting through censorship. In the day-to-day filtering Iranians live with most of the time, it
 keeps the everyday internet reachable (news, WhatsApp/Telegram/Signal,
@@ -423,7 +423,7 @@ accounts they wouldn't want associated with their connection.
   <img src="assets/lion-and-sun-flag.png" alt="Lion and Sun flag of Iran" width="200">
 </p>
 
-## Alternative ways of helping Iranians
+## Alternatives
 
 Running this build is one option, not the only one. The goal is to get people
 in Iran back online by whatever actually works and keeps them safe, and what
@@ -547,3 +547,11 @@ If you find it useful, also run the
 [official Conduit](https://github.com/Psiphon-Inc/conduit) on a second
 device. It helps every censored country, not just Iran. Full
 disclaimer in [`NOTICE.md`](NOTICE.md).
+
+
+### Who am I and why should you trust me? 
+I’m a DPhil (PhD) student studying AI at Oxford University with a background in software development. This is what I managed to put together with my background combined with reputable information I could find online. While I have studied the use of VPNs in the Arab Spring, I have no prior experience with Iranian censorship specifically. I am not Iranian, however strongly oppose the internet blackout and restrictions that have been placed on them, and I want to do what I can to help.
+And you shouldn’t trust me, you should independently verify everything I or anyone else am claiming before trying it out yourself. In general you should be extremely skeptical when it comes to downloading and running executables from the internet, especially with the rate of cyber attacks skyrocketing alongside the rise of AI. With that being said, I have attempted to provide sufficient evidence to show that what I am providing is a small patch to the existing Conduit repository, as well as providing external alternatives. But at the end of the day, the responsibility falls on the individual as to whether or not to try it. 
+If you do have any questions or comments, please do feel free to reach out! 
+
+
