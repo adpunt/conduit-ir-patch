@@ -135,13 +135,12 @@ About a minute after startup, watch the terminal for these lines:
 
 - `[OK] Starting Psiphon Conduit (...)`: the program launched.
 - `[ERROR] client region not allowed`: someone outside Iran was matched to
-  you and your computer turned them away — the restriction doing its job.
-  How often this shows up varies.
+  you and your computer turned them away, the restriction doing its job. This only appears if you have the verbose `-v` flag on. 
 - A stats line like:
   `[STATS] Announcing: 0 | Connecting: 73 | Connected: 21 | Up: 17.6 GB | Down: 134.6 GB | Uptime: 99h47m44s | Regions: common[IR(conn:21|traffic:152.2 GB)]`
   When `Connected` is at least 1 and `Up`/`Down` are moving, someone in
   Iran is using your proxy right now. **The `Regions` field is your real
-  proof the restriction works — it should only ever list `IR`.** If that's
+  proof the restriction works, it should only ever list `IR`.** If that's
   all you see there, your build is serving Iran and nowhere else.
 
 `Connected` may sit at zero for stretches. Demand from Iran goes up
@@ -175,7 +174,7 @@ down and moves on to the next person.
 
 | File | Purpose |
 |---|---|
-| [`ir-only.patch`](ir-only.patch) | The change, shown in full — for reading. It's already in the fork (below). |
+| [`ir-only.patch`](ir-only.patch) | The change, shown in full. It's already in the fork (below). |
 | [`extract-config/`](extract-config/) | Source code of the config tool |
 | [`install.sh`](install.sh) | Script GitHub uses to build the release binaries (you don't run it) |
 | [`NOTICE.md`](NOTICE.md), [`LICENSE`](LICENSE) | Credit to Psiphon + the open-source license |
@@ -191,7 +190,7 @@ on top of that networking code. The Iran-only change lives in the code, not in
 the app. So building this project means taking the official Conduit app,
 untouched, and compiling it against the copied-and-slightly-modified network code instead
 of Psiphon's original. What comes out is the genuine Conduit app with the one
-Iran-only line added — nothing about the app itself is altered or re-published,
+Iran-only line added, nothing about the app itself is altered or re-published,
 only this repo and that one copied library.
 
 ---
@@ -206,7 +205,7 @@ those are, skip this whole section.
 There's no patch step and no fork of the Conduit app. You clone the
 **official** Conduit, point its build at the
 [`psiphon-tunnel-core`](https://github.com/adpunt/psiphon-tunnel-core) fork
-(`ir-only` branch — upstream Psiphon plus the one change shown above), and
+(`ir-only` branch containing upstream Psiphon plus the one change shown above), and
 build:
 
 ```bash
@@ -325,7 +324,7 @@ This is what it would look like:
 1. Connect to Psiphon first and confirm it's actually up and in
    whole-device (VPN) mode. Tor browser would not be accessible without an initial VPN like Conduit (or any other trusted VPN)
 2. Then open **Tor Browser** (desktop or Android, from
-   [torproject.org](https://www.torproject.org/) — reachable once Psiphon is
+   [torproject.org](https://www.torproject.org/), reachable once Psiphon is
    up) and connect with its **normal/direct setting: no Snowflake, no bridge.**
    Snowflake only exists to reach Tor from *inside* Iran's filtering; Psiphon
    has already carried them past it, so plain Tor connects the way it would in
@@ -385,13 +384,12 @@ explain: *"Psiphon does not increase your online privacy, and should not
 be considered or used as an online security tool."* Psiphon's own
 [privacy policy](https://psiphon.ca/en/privacy.html) notes
 that its servers collect aggregated connection metadata (timestamps,
-region/city codes, protocol type, bytes transferred) — not the websites
+region/city codes, protocol type, bytes transferred), not the websites
 visited, but a footprint of each connection. Independent security audits
 by Cure53 ([2017](https://cure53.de/pentest-report_psiphon.pdf),
 [2019](https://cure53.de/pentest-report_psiphon_2.pdf), and
 [2024 tunnel-core](https://cure53.de/pentest-report_psiphon_4.pdf))
-found the core networking library this build relies on to be solid — no
-critical flaws in tunnel-core. (The 2019 audit did find two Critical
+found the core networking library this build relies on to be solid. (The 2019 audit did find two Critical
 remote-code-execution bugs, but both were in Psiphon's legacy Windows
 desktop client, not tunnel-core and not the Conduit app.) There's also a
 separate
@@ -431,13 +429,13 @@ counts as "safe enough" depends on each person's situation inside Iran.
 
 ### Getting the same Iran-only effect in Conduit without this patch
 
-There are two ways to make a relay serve only Iran. One is to change the program
+There are other ways to make a relay serve only Iran. One is to change the program
 itself, the way this repo does. The other is to leave the official program
 exactly as it is and use your computer's own firewall to allow only connections
-to and from Iranian internet addresses — that's what the tools below do.
+to and from Iranian internet addresses.
 
 **Why there's no "just block a port" option** - Conduit doesn't listen for
-incoming connections. Your relay dials *out* to a Psiphon broker, and the broker
+incoming connections. Your relay dials out to a Psiphon broker, and the broker
 hands it clients it reaches over WebRTC (via STUN/TURN). So there's no inbound
 port to gate, and your machine never picks who it serves, the broker does. That
 constrains every option here.
@@ -492,12 +490,12 @@ running headless, [ssmirr/conduit](https://github.com/ssmirr/conduit) is a
 community Linux/CLI fork and
 [CappyT's setup gist](https://gist.github.com/CappyT/4df97556349375a44a43b4d6011e0ded)
 has ready-made Docker Compose and Kubernetes manifests for it (no public IP
-needed — it dials out over STUN/TURN). Both run all-regions Conduit, so pair them
+needed, it dials out over STUN/TURN). Both run all-regions Conduit, so pair them
 with a firewall tool above, or use this repo's patch, for Iran-only.
 
 ### Alternatives to Conduit
 
-- **Tor with Snowflake** - as disgused above, Tor is a fantastic tool for anonymity, but it's hard
+- **Tor with Snowflake** - as discussed above, Tor is a fantastic tool for anonymity, but it's hard
   to reach from Iran: direct Tor and the older obfs4 bridges are blocked, and
   Snowflake (a WebRTC transport that looks like a video call) is what mostly
   still connects. The catch is that a person inside Iran usually needs a working
